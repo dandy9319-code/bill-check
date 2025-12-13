@@ -3,8 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>分帳小幫手 v2.2.0</title>
+    <title>分帳小幫手 v2.2.1</title>
     
+    <!-- 強制瀏覽器不快取 HTML (解決更新後手機仍顯示舊版的問題) -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
     <!-- PWA 設定 (隱藏瀏覽器工具列) -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -62,12 +67,11 @@
         const { useState, useMemo, useRef } = React;
 
         /**
-         * 版本: v2.2.0
-         * 專案: 分帳小幫手 (Download Fix & Safe Area)
+         * 版本: v2.2.1
+         * 專案: 分帳小幫手 (Cache Busting)
          * 修改重點:
-         * 1. 修復下載功能：改用 Blob 方式處理圖片下載，避免跨網域跳轉或下載失敗。
-         * 2. 版面修正：加入 safe-area-inset-top 支援，解決全螢幕模式下狀態列遮擋問題。
-         * 3. 優化圖片載入與按鈕行為。
+         * 1. 新增 meta tags (Cache-Control, Pragma, Expires) 以防止瀏覽器過度快取舊版 HTML。
+         * 2. 更新版本號顯示為 v2.2.1。
          */
 
         // --- Assets ---
@@ -439,7 +443,7 @@
                                     <div className="w-10 h-10 rounded-lg shadow-md shadow-orange-200 overflow-hidden shrink-0">
                                         <img src={PROXY_LOGO_URL} alt="Logo" className="w-full h-full object-cover" />
                                     </div>
-                                    <div><h1 className="text-xl font-bold text-[#4A403A] tracking-tight leading-tight">分帳小幫手</h1><p className="text-[10px] text-stone-500 font-medium">v2.2.0</p></div>
+                                    <div><h1 className="text-xl font-bold text-[#4A403A] tracking-tight leading-tight">分帳小幫手</h1><p className="text-[10px] text-stone-500 font-medium">v2.2.1</p></div>
                                 </div>
                                 <div className="flex gap-2">
                                     <HeaderButton icon={Camera} onClick={generateReceipt} label="生成圖片" />
