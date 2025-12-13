@@ -3,11 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>聚餐分帳助手 v1.9.0</title>
+    <title>聚餐分帳小幫手 v2.1.1</title>
     
-    <!-- 設定 App Icon (iOS & Android) -->
-    <link rel="icon" href="https://drive.google.com/uc?export=view&id=1dhOMUAE1lZ2faIDdyd7jtJZbZf-f1C6u" type="image/png">
-    <link rel="apple-touch-icon" href="https://drive.google.com/uc?export=view&id=1dhOMUAE1lZ2faIDdyd7jtJZbZf-f1C6u">
+    <!-- PWA 設定 (隱藏瀏覽器工具列) -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <!-- 設定 App Icon (使用 CDN 加速並指定尺寸) -->
+    <link rel="icon" href="https://wsrv.nl/?url=https://drive.google.com/uc?export=view&id=1dhOMUAE1lZ2faIDdyd7jtJZbZf-f1C6u&w=192&output=png" type="image/png">
+    <link rel="apple-touch-icon" href="https://wsrv.nl/?url=https://drive.google.com/uc?export=view&id=1dhOMUAE1lZ2faIDdyd7jtJZbZf-f1C6u&w=180&output=png">
     
     <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -17,7 +22,7 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- 引入 html2canvas (用於截圖生成) -->
+    <!-- 引入 html2canvas -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <style>
@@ -25,12 +30,10 @@
         input { font-size: 16px !important; }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        /* 滾動條顏色改為暖色系 */
         .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #f2cc8f; border-radius: 20px; }
         input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
         
-        /* 動畫效果 */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(-5px); }
             to { opacity: 1; transform: translateY(0); }
@@ -38,8 +41,6 @@
         .animate-fade-in {
             animation: fadeIn 0.3s ease-out forwards;
         }
-
-        /* 模態窗淡入 */
         @keyframes modalFade {
             from { opacity: 0; }
             to { opacity: 1; }
@@ -49,19 +50,35 @@
         }
     </style>
 </head>
-<body class="bg-[#FFF9F0] text-[#4A403A]"> <!-- 改為暖奶油色背景與深咖啡文字 -->
+<body class="bg-[#FFF9F0] text-[#4A403A]">
+    <!-- 
+        創作者: dandy
+        IG:dandy0906
+    -->
     <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useMemo, useRef } = React;
 
         /**
-         * 版本: v1.9.0
-         * 專案: 聚餐分帳小程式 (App Icon Added)
+         * 版本: v2.1.1
+         * 專案: 聚餐分帳小幫手 (Label Update)
          * 修改重點:
-         * 1. 在 <head> 中新增 <link rel="icon"> 與 <link rel="apple-touch-icon">，
-         * 使用 Google Drive 直連網址設定桌面圖示。
+         * 1. 修改外帶欄位標籤為「外帶(免服務費)」。
+         * 2. 移除外帶欄位的副標籤「無」。
          */
+
+        // --- Assets ---
+        const LOGO_URL = "https://drive.google.com/uc?export=view&id=1dhOMUAE1lZ2faIDdyd7jtJZbZf-f1C6u";
+        // Logo 代理 (加速顯示)
+        const PROXY_LOGO_URL = `https://wsrv.nl/?url=${encodeURIComponent(LOGO_URL)}&w=100&output=png`;
+
+        const QR_CODE_URL = "https://drive.google.com/uc?export=view&id=1_gZxk_FmAJez9E_bvr2OeytzG1du5rvA";
+        // QR Code 代理 (高解析度 & PNG 格式以確保清晰)
+        const PROXY_QR_CODE_URL = `https://wsrv.nl/?url=${encodeURIComponent(QR_CODE_URL)}&w=300&output=png`;
+        
+        const GUIDE_IMG_URL = "https://drive.google.com/uc?export=view&id=1c_xatKsfeRrbY51LTT5XAdkiXY9j5QyW";
+        const PROXY_GUIDE_IMG_URL = `https://wsrv.nl/?url=${encodeURIComponent(GUIDE_IMG_URL)}`;
 
         // --- Icon Components ---
         const IconBase = ({ children, size = 20, className = "" }) => (
@@ -70,7 +87,7 @@
         const Plus = (props) => <IconBase {...props}><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></IconBase>;
         const Trash2 = (props) => <IconBase {...props}><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></IconBase>;
         const User = (props) => <IconBase {...props}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></IconBase>;
-        const Calculator = (props) => <IconBase {...props}><rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="16" y1="14" x2="16" y2="18"></line><path d="M16 10h.01"></path><path d="M12 10h.01"></path><path d="M8 10h.01"></path><path d="M12 14h.01"></path><path d="M8 14h.01"></path><path d="M12 18h.01"></path><path d="M8 18h.01"></path></IconBase>;
+        // Calculator icon removed in favor of Image Logo
         const Receipt = (props) => <IconBase {...props}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1Z"></path><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"></path><path d="M12 17V7"></path></IconBase>;
         const DollarSign = (props) => <IconBase {...props}><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></IconBase>;
         const Coffee = (props) => <IconBase {...props}><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></IconBase>;
@@ -82,6 +99,7 @@
         const Circle = (props) => <IconBase {...props}><circle cx="12" cy="12" r="10"></circle></IconBase>;
         const Camera = (props) => <IconBase {...props}><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></IconBase>;
         const X = (props) => <IconBase {...props}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></IconBase>;
+        const LinkIcon = (props) => <IconBase {...props}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></IconBase>;
 
         // --- Constants & Enums ---
         const MODES = { SPLIT_ALL: 'SPLIT_ALL', SEPARATE: 'SEPARATE' };
@@ -94,12 +112,7 @@
         const formatDate = () => { const d = new Date(); return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
 
         const getAvatarStyle = (index) => {
-            const styles = [
-                'bg-rose-100 text-rose-600',    // 紅/珊瑚
-                'bg-teal-100 text-teal-600',    // 綠/薄荷
-                'bg-amber-100 text-amber-600',  // 黃
-                'bg-sky-100 text-sky-600'       // 藍
-            ];
+            const styles = ['bg-rose-100 text-rose-600', 'bg-teal-100 text-teal-600', 'bg-amber-100 text-amber-600', 'bg-sky-100 text-sky-600'];
             return styles[index % styles.length];
         };
 
@@ -110,7 +123,6 @@
             if (totalWeight === 0) return { peopleResults: [], totals: { subtotal: 0, serviceFee: 0, grandTotal: 0 } };
 
             const taxMultiplier = 1 + (serviceChargeRate / 100);
-            
             let sharedWithTax = 0;
             let discountAmount = 0;
             let totalServiceFee = 0;
@@ -133,7 +145,6 @@
                 const percentToPay = 100 - validPercentOff;
                 const baseTaxed = sharedAmount * taxMultiplier;
                 const afterDiscount = baseTaxed * (percentToPay / 100);
-                
                 sharedWithTax = afterDiscount;
                 discountAmount = baseTaxed - afterDiscount; 
                 totalServiceFee = sharedAmount * (serviceChargeRate / 100); 
@@ -175,12 +186,7 @@
 
             return {
                 peopleResults,
-                totals: {
-                    subtotal: sharedAmount + totalIndividualBase + takeoutAmount, 
-                    serviceFee: finalServiceFee, 
-                    grandTotal: grandTotal,
-                    discount: discountAmount
-                }
+                totals: { subtotal: sharedAmount + totalIndividualBase + takeoutAmount, serviceFee: finalServiceFee, grandTotal: grandTotal, discount: discountAmount }
             };
         };
 
@@ -195,20 +201,10 @@
         const InputGroup = ({ label, icon: Icon, value, onChange, placeholder, type = "number", subLabel, className = "" }) => (
             <div className="flex flex-col space-y-1">
                 <label className="text-sm font-bold text-stone-600 flex justify-between items-center">
-                    <span className="flex items-center gap-1.5">
-                        {Icon && <Icon size={14} className="text-[#E07A5F]" />} 
-                        {label}
-                    </span>
+                    <span className="flex items-center gap-1.5">{Icon && <Icon size={14} className="text-[#E07A5F]" />}{label}</span>
                     {subLabel && <span className="text-[10px] text-stone-400 font-medium">{subLabel}</span>}
                 </label>
-                <input
-                    type={type}
-                    value={value}
-                    onChange={onChange}
-                    placeholder={placeholder}
-                    onFocus={(e) => e.target.select()}
-                    className={`w-full px-3 py-2 bg-[#FFFCF9] border border-[#E6D5C8] rounded-lg focus:ring-2 focus:ring-[#E07A5F] focus:border-[#E07A5F] outline-none transition-all text-stone-800 font-bold placeholder-stone-300 shadow-inner text-sm ${className}`}
-                />
+                <input type={type} value={value} onChange={onChange} placeholder={placeholder} onFocus={(e) => e.target.select()} className={`w-full px-3 py-2 bg-[#FFFCF9] border border-[#E6D5C8] rounded-lg focus:ring-2 focus:ring-[#E07A5F] focus:border-[#E07A5F] outline-none transition-all text-stone-800 font-bold placeholder-stone-300 shadow-inner text-sm ${className}`} />
             </div>
         );
 
@@ -221,12 +217,8 @@
         );
 
         const RadioOption = ({ selected, onClick, label }) => (
-            <div 
-                onClick={onClick}
-                className={`flex items-center gap-1 cursor-pointer transition-colors ${selected ? 'text-[#E07A5F] font-bold' : 'text-stone-400 hover:text-stone-600'}`}
-            >
-                {selected ? <CheckCircle size={14} /> : <Circle size={14} />}
-                <span className="text-xs">{label}</span>
+            <div onClick={onClick} className={`flex items-center gap-1 cursor-pointer transition-colors ${selected ? 'text-[#E07A5F] font-bold' : 'text-stone-400 hover:text-stone-600'}`}>
+                {selected ? <CheckCircle size={14} /> : <Circle size={14} />}<span className="text-xs">{label}</span>
             </div>
         );
 
@@ -235,57 +227,26 @@
                 if (!value || type !== DISCOUNT_TYPES.PERCENT) return '';
                 const percentOff = parseFloat(value);
                 const discountRate = (100 - percentOff) / 10;
-                if (discountRate % 1 === 0) return `${discountRate}折`;
-                return `${discountRate}折`;
+                return discountRate % 1 === 0 ? `${discountRate}折` : `${discountRate}折`;
             }, [value, type]);
 
             return (
                 <div className="space-y-2 pt-2 border-t border-[#E6D5C8]">
-                    <div className="flex items-center gap-2 mb-1">
-                         <Tag size={16} className="text-[#E07A5F]" />
-                         <span className="text-sm font-bold text-stone-600">折扣設定</span>
-                    </div>
+                    <div className="flex items-center gap-2 mb-1"><Tag size={16} className="text-[#E07A5F]" /><span className="text-sm font-bold text-stone-600">折扣設定</span></div>
                     <div className="flex bg-[#EFE6E0] p-1 rounded-lg">
-                        {[
-                            { id: DISCOUNT_TYPES.NONE, label: '無折扣' },
-                            { id: DISCOUNT_TYPES.PERCENT, label: '打折 (%)' },
-                            { id: DISCOUNT_TYPES.AMOUNT, label: '扣抵 (元)' }
-                        ].map(opt => (
-                            <button
-                                key={opt.id}
-                                onClick={() => onChangeType(opt.id)}
-                                className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${type === opt.id ? 'bg-white text-[#E07A5F] shadow-sm border border-[#D7CCC8]' : 'text-stone-400 hover:text-stone-600'}`}
-                            >
-                                {opt.label}
-                            </button>
+                        {[ { id: DISCOUNT_TYPES.NONE, label: '無折扣' }, { id: DISCOUNT_TYPES.PERCENT, label: '打折 (%)' }, { id: DISCOUNT_TYPES.AMOUNT, label: '扣抵 (元)' } ].map(opt => (
+                            <button key={opt.id} onClick={() => onChangeType(opt.id)} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${type === opt.id ? 'bg-white text-[#E07A5F] shadow-sm border border-[#D7CCC8]' : 'text-stone-400 hover:text-stone-600'}`}>{opt.label}</button>
                         ))}
                     </div>
-                    
                     {type !== DISCOUNT_TYPES.NONE && (
                         <div className="animate-fade-in space-y-2">
                             <div className="flex items-center gap-2">
-                                <input
-                                    type="number"
-                                    value={value}
-                                    onChange={onChangeValue}
-                                    placeholder={type === DISCOUNT_TYPES.PERCENT ? "例如: 10 (代表9折)" : "輸入扣除金額"}
-                                    className="flex-1 px-3 py-2 bg-[#FFFCF9] border border-orange-200 rounded-lg focus:ring-2 focus:ring-[#E07A5F] outline-none text-orange-700 font-bold text-sm shadow-inner"
-                                />
+                                <input type="number" value={value} onChange={onChangeValue} placeholder={type === DISCOUNT_TYPES.PERCENT ? "例如: 10 (代表9折)" : "輸入扣除金額"} className="flex-1 px-3 py-2 bg-[#FFFCF9] border border-orange-200 rounded-lg focus:ring-2 focus:ring-[#E07A5F] outline-none text-orange-700 font-bold text-sm shadow-inner" />
                                 {type === DISCOUNT_TYPES.PERCENT && discountLabel && <span className="text-sm font-bold text-stone-400 whitespace-nowrap">{discountLabel}</span>}
                                 {type === DISCOUNT_TYPES.AMOUNT && <span className="text-sm font-bold text-stone-400 whitespace-nowrap">元</span>}
                             </div>
-                            {type === DISCOUNT_TYPES.PERCENT && (
-                                <div className="text-[10px] text-stone-500 bg-[#FFF9F0] p-2 rounded border border-[#E6D5C8] leading-relaxed">
-                                    <span className="font-bold text-stone-600">計算邏輯：</span>
-                                    針對台灣常見習慣，服務費依「原價」計算。公式為：(總金額 + 10%服務費) - 折扣 = 應付總額。若是「打折(%)」，則是針對總金額打折。
-                                </div>
-                            )}
-                            {type === DISCOUNT_TYPES.AMOUNT && (
-                                <div className="flex gap-4 px-1 py-1">
-                                    <RadioOption selected={timing === DISCOUNT_TIMING.BEFORE_TAX} onClick={() => onChangeTiming(DISCOUNT_TIMING.BEFORE_TAX)} label="服務費前扣抵" />
-                                    <RadioOption selected={timing === DISCOUNT_TIMING.AFTER_TAX} onClick={() => onChangeTiming(DISCOUNT_TIMING.AFTER_TAX)} label="服務費後扣抵" />
-                                </div>
-                            )}
+                            {type === DISCOUNT_TYPES.PERCENT && <div className="text-[10px] text-stone-500 bg-[#FFF9F0] p-2 rounded border border-[#E6D5C8] leading-relaxed"><span className="font-bold text-stone-600">計算邏輯：</span>針對台灣常見習慣，服務費依「原價」計算。公式為：(總金額 + 10%服務費) - 折扣 = 應付總額。若是「打折(%)」，則是針對總金額打折。</div>}
+                            {type === DISCOUNT_TYPES.AMOUNT && <div className="flex gap-4 px-1 py-1"><RadioOption selected={timing === DISCOUNT_TIMING.BEFORE_TAX} onClick={() => onChangeTiming(DISCOUNT_TIMING.BEFORE_TAX)} label="服務費前扣抵" /><RadioOption selected={timing === DISCOUNT_TIMING.AFTER_TAX} onClick={() => onChangeTiming(DISCOUNT_TIMING.AFTER_TAX)} label="服務費後扣抵" /></div>}
                         </div>
                     )}
                 </div>
@@ -293,12 +254,63 @@
         };
 
         const HeaderButton = ({ icon: Icon, onClick, label }) => (
-            <button onClick={onClick} className="p-2 bg-white/60 hover:bg-white text-[#E07A5F] rounded-lg transition-colors border border-[#E6D5C8] shadow-sm" title={label}>
-                <Icon size={18} />
+            <button 
+                onClick={onClick}
+                className="flex flex-col items-center justify-center gap-1 group"
+                title={label}
+            >
+                <div className="p-2 bg-white/60 group-hover:bg-white text-[#E07A5F] rounded-lg transition-colors border border-[#E6D5C8] shadow-sm">
+                    <Icon size={20} />
+                </div>
+                <span className="text-[9px] font-bold text-[#E07A5F] opacity-80 group-hover:opacity-100 transition-opacity">{label}</span>
             </button>
         );
 
-        // --- Screenshot Components ---
+        // --- Modals ---
+
+        const ShareModal = ({ isOpen, onClose }) => {
+            if (!isOpen) return null;
+            return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm modal-overlay">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-xs w-full overflow-hidden flex flex-col relative">
+                        <button onClick={onClose} className="absolute top-3 right-3 p-1 hover:bg-stone-100 rounded-full text-stone-400 z-10"><X size={20}/></button>
+                        <div className="p-6 text-center space-y-4">
+                            <h3 className="font-bold text-stone-700 text-lg flex items-center justify-center gap-2">
+                                <Share2 size={20} className="text-[#E07A5F]"/> 分享小幫手
+                            </h3>
+                            <div className="bg-[#FFF9F0] p-4 rounded-xl border border-[#E6D5C8] inline-block">
+                                <img src={PROXY_QR_CODE_URL} crossOrigin="anonymous" alt="Scan to Share" className="w-40 h-40 object-contain mix-blend-multiply" />
+                            </div>
+                            <p className="text-xs text-stone-500">掃描 QR Code 或複製下方連結<br/>與朋友分享這個好用的小工具！</p>
+                            <div className="flex items-center gap-2 bg-stone-50 p-2 rounded-lg border border-stone-100">
+                                <input readOnly value={window.location.href} className="bg-transparent text-xs text-stone-500 w-full outline-none truncate" />
+                                <button onClick={() => {navigator.clipboard.writeText(window.location.href); alert("網址已複製！")}} className="text-[#E07A5F] hover:text-[#D0654B]"><LinkIcon size={16}/></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const GuideModal = ({ isOpen, onClose }) => {
+            if (!isOpen) return null;
+            return (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm modal-overlay">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full max-h-[90vh] flex flex-col overflow-hidden relative">
+                        <button onClick={onClose} className="absolute top-3 right-3 p-1 hover:bg-stone-100 rounded-full text-stone-400 z-10 bg-white/50"><X size={20}/></button>
+                        <div className="p-4 border-b border-stone-100 bg-[#FFF9F0]">
+                            <h3 className="font-bold text-stone-700 flex items-center gap-2">
+                                <Download size={18} className="text-[#E07A5F]"/> 加入桌面教學
+                            </h3>
+                        </div>
+                        <div className="flex-1 overflow-auto p-4 bg-stone-50 text-center">
+                            <img src={PROXY_GUIDE_IMG_URL} crossOrigin="anonymous" alt="加入桌面教學" className="w-full h-auto rounded-lg shadow-sm mb-4" />
+                            <a href={PROXY_GUIDE_IMG_URL} download="加入桌面教學.png" className="inline-block px-4 py-2 bg-[#E07A5F] text-white text-xs font-bold rounded-full shadow-md hover:bg-[#D0654B] transition-colors">下載教學圖片</a>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
 
         const ReceiptModal = ({ isOpen, onClose, imgSrc }) => {
             if (!isOpen) return null;
@@ -306,26 +318,14 @@
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm modal-overlay">
                     <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full max-h-[90vh] flex flex-col overflow-hidden">
                         <div className="p-4 border-b border-stone-100 flex justify-between items-center bg-[#FFF9F0]">
-                            <h3 className="font-bold text-stone-700 flex items-center gap-2">
-                                <Receipt size={18} className="text-[#E07A5F]"/> 分帳明細圖
-                            </h3>
+                            <h3 className="font-bold text-stone-700 flex items-center gap-2"><Receipt size={18} className="text-[#E07A5F]"/> 分帳明細圖</h3>
                             <button onClick={onClose} className="p-1 hover:bg-stone-200 rounded-full text-stone-400"><X size={20}/></button>
                         </div>
                         <div className="flex-1 overflow-auto p-4 bg-[#F8F5F2] flex justify-center">
-                            {imgSrc ? (
-                                <img src={imgSrc} alt="分帳明細" className="shadow-lg rounded-lg max-w-full h-auto object-contain" />
-                            ) : (
-                                <div className="flex items-center justify-center h-40 text-stone-400">生成中...</div>
-                            )}
+                            {imgSrc ? <img src={imgSrc} alt="分帳明細" className="shadow-lg rounded-lg max-w-full h-auto object-contain" /> : <div className="flex items-center justify-center h-40 text-stone-400">生成中...</div>}
                         </div>
                         <div className="p-4 border-t border-stone-100 bg-white space-y-2">
-                             <a 
-                                href={imgSrc} 
-                                download={`聚餐分帳_${new Date().toISOString().slice(0,10)}.png`}
-                                className="block w-full py-3 bg-[#E07A5F] hover:bg-[#D0654B] text-white text-center font-bold rounded-xl transition-colors shadow-lg shadow-orange-100"
-                            >
-                                下載圖片
-                            </a>
+                             <a href={imgSrc} download={`聚餐分帳_${new Date().toISOString().slice(0,10)}.png`} className="block w-full py-3 bg-[#E07A5F] hover:bg-[#D0654B] text-white text-center font-bold rounded-xl transition-colors shadow-lg shadow-orange-100">下載圖片</a>
                             <p className="text-[10px] text-center text-stone-400">或長按圖片儲存分享</p>
                         </div>
                     </div>
@@ -339,48 +339,24 @@
                     <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#E07A5F', margin: 0 }}>聚餐分帳明細</h2>
                     <p style={{ fontSize: '12px', color: '#8D7F75', marginTop: '5px' }}>{date}</p>
                 </div>
-
                 <div style={{ marginBottom: '20px', fontSize: '14px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                        <span>餐費小計</span>
-                        <span style={{ fontWeight: 'bold' }}>{formatCurrency(totals.subtotal)}</span>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                        <span>服務費 ({serviceCharge}%)</span>
-                        <span style={{ fontWeight: 'bold' }}>{formatCurrency(totals.serviceFee)}</span>
-                    </div>
-                    {totals.discount > 0 && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px', color: '#E07A5F' }}>
-                            <span>折扣</span>
-                            <span style={{ fontWeight: 'bold' }}>-{formatCurrency(totals.discount)}</span>
-                        </div>
-                    )}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #D7CCC8', fontSize: '18px', fontWeight: 'bold', color: '#E07A5F' }}>
-                        <span>總金額</span>
-                        <span>{formatCurrency(totals.grandTotal)}</span>
-                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}><span>餐費小計</span><span style={{ fontWeight: 'bold' }}>{formatCurrency(totals.subtotal)}</span></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}><span>服務費 ({serviceCharge}%)</span><span style={{ fontWeight: 'bold' }}>{formatCurrency(totals.serviceFee)}</span></div>
+                    {totals.discount > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px', color: '#E07A5F' }}><span>折扣</span><span style={{ fontWeight: 'bold' }}>-{formatCurrency(totals.discount)}</span></div>}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #D7CCC8', fontSize: '18px', fontWeight: 'bold', color: '#E07A5F' }}><span>總金額</span><span>{formatCurrency(totals.grandTotal)}</span></div>
                 </div>
-
-                <div style={{ borderTop: '2px dashed #D7CCC8', paddingTop: '20px' }}>
+                <div style={{ borderTop: '2px dashed #D7CCC8', paddingTop: '20px', marginBottom: '20px' }}>
                     <h3 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '10px', color: '#8D7F75' }}>分攤名單 ({people.length}人)</h3>
                     {people.map((p, i) => (
                         <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid #EFE6E0' }}>
-                            <div>
-                                <div style={{ fontWeight: 'bold', fontSize: '16px' }}>{p.name || `朋友 ${i+1}`}</div>
-                                <div style={{ fontSize: '10px', color: '#8D7F75' }}>
-                                    {mode === MODES.SEPARATE ? `(個$${p.personalAmount} + 公$${Math.round(p.breakdown.shared)})` : '平均分攤'}
-                                    {p.weight !== 1 && ` • ${p.weight}份`}
-                                </div>
-                            </div>
-                            <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#4A403A' }}>
-                                {formatCurrency(p.finalPay)}
-                            </div>
+                            <div><div style={{ fontWeight: 'bold', fontSize: '16px' }}>{p.name || `朋友 ${i+1}`}</div><div style={{ fontSize: '10px', color: '#8D7F75' }}>{mode === MODES.SEPARATE ? `(個$${p.personalAmount} + 公$${Math.round(p.breakdown.shared)})` : '平均分攤'}{p.weight !== 1 && ` • ${p.weight}份`}</div></div>
+                            <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#4A403A' }}>{formatCurrency(p.finalPay)}</div>
                         </div>
                     ))}
                 </div>
-                
-                <div style={{ marginTop: '30px', textAlign: 'center', fontSize: '10px', color: '#D7CCC8' }}>
-                    Generated by 聚餐分帳助手
+                <div style={{ textAlign: 'center', borderTop: '1px solid #EFE6E0', paddingTop: '20px' }}>
+                    <img src={PROXY_QR_CODE_URL} crossOrigin="anonymous" style={{ width: '80px', height: '80px', margin: '0 auto 10px', mixBlendMode: 'multiply' }} />
+                    <div style={{ fontSize: '10px', color: '#D7CCC8' }}>Generated by 聚餐分帳小幫手</div>
                 </div>
             </div>
         );
@@ -388,11 +364,7 @@
         // --- Main App ---
 
         function SplitBillApp() {
-            // State
-            const [people, setPeople] = useState([
-                { id: 1, name: '', personalAmount: 0, weight: 1 },
-                { id: 2, name: '', personalAmount: 0, weight: 1 },
-            ]);
+            const [people, setPeople] = useState([{ id: 1, name: '', personalAmount: 0, weight: 1 }, { id: 2, name: '', personalAmount: 0, weight: 1 }]);
             const [sharedBill, setSharedBill] = useState('');
             const [takeoutBill, setTakeoutBill] = useState('');
             const [serviceCharge, setServiceCharge] = useState(DEFAULT_SERVICE_CHARGE);
@@ -401,236 +373,105 @@
             const [discountValue, setDiscountValue] = useState('');
             const [discountTiming, setDiscountTiming] = useState(DISCOUNT_TIMING.AFTER_TAX); 
 
-            // Modal State
+            // Modal States
             const [showReceipt, setShowReceipt] = useState(false);
             const [receiptImg, setReceiptImg] = useState('');
+            const [showShare, setShowShare] = useState(false);
+            const [showGuide, setShowGuide] = useState(false);
 
-            const handleDiscountTypeChange = (newType) => {
-                setDiscountType(newType);
-                setDiscountValue('');
-            };
+            const handleDiscountTypeChange = (newType) => { setDiscountType(newType); setDiscountValue(''); };
+            const { peopleResults, totals } = useMemo(() => calculateBill(people, Number(sharedBill) || 0, Number(takeoutBill) || 0, Number(serviceCharge) || 0, mode, discountType, Number(discountValue), discountTiming), [people, sharedBill, takeoutBill, serviceCharge, mode, discountType, discountValue, discountTiming]);
 
-            const { peopleResults, totals } = useMemo(() => {
-                return calculateBill(people, Number(sharedBill) || 0, Number(takeoutBill) || 0, Number(serviceCharge) || 0, mode, discountType, Number(discountValue), discountTiming);
-            }, [people, sharedBill, takeoutBill, serviceCharge, mode, discountType, discountValue, discountTiming]);
-
-            const addPerson = () => {
-                const newId = people.length > 0 ? Math.max(...people.map(p => p.id)) + 1 : 1;
-                setPeople([...people, { id: newId, name: '', personalAmount: 0, weight: 1 }]);
-            };
+            const addPerson = () => { const newId = people.length > 0 ? Math.max(...people.map(p => p.id)) + 1 : 1; setPeople([...people, { id: newId, name: '', personalAmount: 0, weight: 1 }]); };
             const removePerson = (id) => setPeople(people.filter(p => p.id !== id));
             const updatePerson = (id, field, value) => setPeople(people.map(p => p.id === id ? { ...p, [field]: value } : p));
             const toggleWeight = (id) => setPeople(people.map(p => p.id === id ? { ...p, weight: p.weight === 1 ? 0.5 : 1 } : p));
             const toggleMode = () => setMode(prev => prev === MODES.SPLIT_ALL ? MODES.SEPARATE : MODES.SPLIT_ALL);
             
-            const handleShare = async () => { 
-                const shareData = { title: '聚餐分帳', text: `總金額 ${formatCurrency(totals.grandTotal)}`, url: window.location.href };
-                try { if (navigator.share) await navigator.share(shareData); else { await navigator.clipboard.writeText(window.location.href); alert("網址已複製"); } } catch (e) {}
-            };
-            const handleAddToHome = () => alert("請使用瀏覽器選單中的「加入主畫面」功能。");
-
-            // 生成圖片邏輯
             const generateReceipt = async () => {
                 const element = document.getElementById('receipt-capture');
                 if (!element) return;
                 try {
-                    const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: '#FFF9F0' }); // Capture with cream bg
+                    const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: '#FFF9F0' });
                     setReceiptImg(canvas.toDataURL('image/png'));
                     setShowReceipt(true);
-                } catch (error) {
-                    console.error('Screenshot failed:', error);
-                    alert('生成圖片失敗，請重試');
-                }
+                } catch (error) { console.error('Screenshot failed:', error); alert('生成圖片失敗，請重試'); }
             };
 
             return (
                 <div className="min-h-screen font-sans p-3 md:p-6 w-full overflow-x-hidden">
                     <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-3 w-full">
-                        
-                        {/* Header */}
                         <div className="lg:col-span-12 mb-1 lg:mb-2">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    <div className="p-2 bg-[#E07A5F] rounded-lg text-white shadow-md shadow-orange-200 shrink-0">
-                                        <Calculator size={20} />
+                                    <div className="w-10 h-10 rounded-lg shadow-md shadow-orange-200 overflow-hidden shrink-0">
+                                        <img src={PROXY_LOGO_URL} alt="Logo" className="w-full h-full object-cover" />
                                     </div>
-                                    <div>
-                                        <h1 className="text-xl font-bold text-[#4A403A] tracking-tight leading-tight">聚餐分帳</h1>
-                                        <p className="text-[10px] text-stone-500 font-medium">v1.9.0</p>
-                                    </div>
+                                    <div><h1 className="text-xl font-bold text-[#4A403A] tracking-tight leading-tight">聚餐分帳小幫手</h1><p className="text-[10px] text-stone-500 font-medium">v2.1.1</p></div>
                                 </div>
                                 <div className="flex gap-2">
                                     <HeaderButton icon={Camera} onClick={generateReceipt} label="生成圖片" />
-                                    <HeaderButton icon={Share2} onClick={handleShare} label="分享連結" />
-                                    <HeaderButton icon={Download} onClick={handleAddToHome} label="加入桌面" />
+                                    <HeaderButton icon={Share2} onClick={() => setShowShare(true)} label="分享連結" />
+                                    <HeaderButton icon={Download} onClick={() => setShowGuide(true)} label="加入桌面" />
                                 </div>
                             </div>
                         </div>
 
-                        {/* Left Column */}
                         <div className="lg:col-span-5 space-y-3 w-full">
                             <Card>
-                                <div className="flex items-center gap-2 mb-3 text-[#E07A5F] font-bold text-base">
-                                    <Settings size={18} /><h3>計算設定</h3>
-                                </div>
+                                <div className="flex items-center gap-2 mb-3 text-[#E07A5F] font-bold text-base"><Settings size={18} /><h3>計算設定</h3></div>
                                 <div className="space-y-3">
-                                    <div>
-                                        <label className="block text-xs font-bold text-stone-600 mb-1">分帳模式</label>
-                                        <ToggleSwitch active={mode === MODES.SPLIT_ALL ? 'left' : 'right'} onClick={toggleMode} leftLabel="全部平分" rightLabel="扣除各別單點" />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <InputGroup label="服務費率" icon={Receipt} value={serviceCharge} onChange={(e) => setServiceCharge(e.target.value)} subLabel="%" />
-                                        <InputGroup label="外帶/免稅" icon={Coffee} value={takeoutBill} onChange={(e) => setTakeoutBill(e.target.value)} placeholder="0" subLabel="無" />
-                                    </div>
+                                    <div><label className="block text-xs font-bold text-stone-600 mb-1">分帳模式</label><ToggleSwitch active={mode === MODES.SPLIT_ALL ? 'left' : 'right'} onClick={toggleMode} leftLabel="全部平分" rightLabel="扣除各別單點" /></div>
+                                    <div className="grid grid-cols-2 gap-3"><InputGroup label="服務費率" icon={Receipt} value={serviceCharge} onChange={(e) => setServiceCharge(e.target.value)} subLabel="%" /><InputGroup label="外帶(免服務費)" icon={Coffee} value={takeoutBill} onChange={(e) => setTakeoutBill(e.target.value)} placeholder="0" /></div>
                                 </div>
                             </Card>
-
                             <Card className="border-l-4 border-l-[#E07A5F]">
-                                <div className="flex items-center gap-2 mb-3 text-[#E07A5F] font-bold text-base">
-                                    <DollarSign size={18} />
-                                    <h3>{mode === MODES.SPLIT_ALL ? '總金額 (未稅)' : '共同分食 (未稅)'}</h3>
-                                </div>
-                                <InputGroup 
-                                    label={mode === MODES.SPLIT_ALL ? "帳單總金額" : "大家一起吃的金額"}
-                                    value={sharedBill}
-                                    onChange={(e) => setSharedBill(e.target.value)}
-                                    placeholder="輸入金額"
-                                    className="text-lg font-bold text-[#E07A5F]"
-                                />
-                                <p className="mt-2 mb-4 text-[10px] text-stone-500 font-medium bg-[#FFF9F0] p-2 rounded border border-[#E6D5C8] leading-tight">
-                                    {mode === MODES.SPLIT_ALL ? "含服務費後平均分配。" : "加收服務費後分配。個人部分請在右側輸入。"}
-                                </p>
+                                <div className="flex items-center gap-2 mb-3 text-[#E07A5F] font-bold text-base"><DollarSign size={18} /><h3>{mode === MODES.SPLIT_ALL ? '總金額 (未稅)' : '共同分食 (未稅)'}</h3></div>
+                                <InputGroup label={mode === MODES.SPLIT_ALL ? "帳單總金額" : "大家一起吃的金額"} value={sharedBill} onChange={(e) => setSharedBill(e.target.value)} placeholder="輸入金額" className="text-lg font-bold text-[#E07A5F]" />
+                                <p className="mt-2 mb-4 text-[10px] text-stone-500 font-medium bg-[#FFF9F0] p-2 rounded border border-[#E6D5C8] leading-tight">{mode === MODES.SPLIT_ALL ? "含服務費後平均分配。" : "加收服務費後分配。個人部分請在右側輸入。"}</p>
                                 <DiscountSelector type={discountType} onChangeType={handleDiscountTypeChange} value={discountValue} onChangeValue={(e) => setDiscountValue(e.target.value)} timing={discountTiming} onChangeTiming={setDiscountTiming} />
                             </Card>
-
                             <Card className="!bg-[#3D405B] text-white border-none shadow-xl shadow-stone-300 hidden lg:block">
                                 <div className="space-y-3">
-                                    <div className="flex justify-between items-end border-b border-white/20 pb-3">
-                                        <span className="text-white/80 font-medium text-sm">總金額 (含費)</span>
-                                        <span className="text-3xl font-bold tracking-tight text-white">{formatCurrency(totals.grandTotal)}</span>
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4 text-xs text-white/80">
-                                        <div><span className="block opacity-60 mb-0.5">餐費小計</span><span className="font-semibold text-white text-base">{formatCurrency(totals.subtotal)}</span></div>
-                                        <div><span className="block opacity-60 mb-0.5">服務費總計</span><span className="font-semibold text-white text-base">{formatCurrency(totals.serviceFee)}</span></div>
-                                    </div>
-                                    {totals.discount > 0 && (
-                                        <div className="pt-2 border-t border-white/20 text-xs text-[#E07A5F] flex justify-between">
-                                            <span>已扣除折扣</span>
-                                            <span>-{formatCurrency(totals.discount)}</span>
-                                        </div>
-                                    )}
+                                    <div className="flex justify-between items-end border-b border-white/20 pb-3"><span className="text-white/80 font-medium text-sm">總金額 (含費)</span><span className="text-3xl font-bold tracking-tight text-white">{formatCurrency(totals.grandTotal)}</span></div>
+                                    <div className="grid grid-cols-2 gap-4 text-xs text-white/80"><div><span className="block opacity-60 mb-0.5">餐費小計</span><span className="font-semibold text-white text-base">{formatCurrency(totals.subtotal)}</span></div><div><span className="block opacity-60 mb-0.5">服務費總計</span><span className="font-semibold text-white text-base">{formatCurrency(totals.serviceFee)}</span></div></div>
+                                    {totals.discount > 0 && <div className="pt-2 border-t border-white/20 text-xs text-[#E07A5F] flex justify-between"><span>已扣除折扣</span><span>-{formatCurrency(totals.discount)}</span></div>}
                                 </div>
                             </Card>
                         </div>
 
-                        {/* Right Column */}
                         <div className="lg:col-span-7 space-y-3 w-full">
                             <Card className="flex flex-col h-auto">
-                                <div className="flex justify-between items-center mb-4">
-                                    <div className="flex items-center gap-2 text-[#E07A5F] font-bold text-base">
-                                        <User size={18} /><h3>名單 ({people.length}人)</h3>
-                                    </div>
-                                    <button onClick={addPerson} className="flex items-center gap-1 bg-[#FFF0E6] hover:bg-[#FFE0CC] text-[#E07A5F] px-2.5 py-1 rounded-md text-xs font-bold transition-colors">
-                                        <Plus size={14} /> 增加
-                                    </button>
-                                </div>
-
+                                <div className="flex justify-between items-center mb-4"><div className="flex items-center gap-2 text-[#E07A5F] font-bold text-base"><User size={18} /><h3>名單 ({people.length}人)</h3></div><button onClick={addPerson} className="flex items-center gap-1 bg-[#FFF0E6] hover:bg-[#FFE0CC] text-[#E07A5F] px-2.5 py-1 rounded-md text-xs font-bold transition-colors"><Plus size={14} /> 增加</button></div>
                                 <div className="space-y-2">
                                     {people.map((person, index) => (
                                         <div key={person.id} className="group flex flex-col sm:flex-row items-center gap-2 p-2 rounded-lg hover:bg-[#FFF9F0] border border-transparent hover:border-[#E6D5C8] transition-all bg-white/50 sm:bg-transparent">
                                             <div className="flex items-center gap-2 w-full sm:w-auto flex-1">
                                                 <button onClick={() => removePerson(person.id)} className="text-stone-300 hover:text-red-500 transition-colors p-1" title="移除"><Trash2 size={16} /></button>
                                                 <div className="flex-1 flex items-center gap-2">
-                                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${getAvatarStyle(index)}`}>
-                                                        {index + 1}
-                                                    </div>
-                                                    <div className="relative flex-1">
-                                                        <input 
-                                                            type="text" 
-                                                            value={person.name}
-                                                            onChange={(e) => updatePerson(person.id, 'name', e.target.value)}
-                                                            className="w-full bg-[#FFFCF9] border border-[#E6D5C8] focus:border-[#E07A5F] rounded-md px-3 py-1.5 text-stone-800 font-bold text-sm outline-none shadow-sm placeholder-stone-300 transition-all"
-                                                            placeholder={`輸入姓名`}
-                                                        />
-                                                    </div>
-                                                    <button 
-                                                        onClick={() => toggleWeight(person.id)}
-                                                        className={`shrink-0 px-2 py-1.5 rounded-md text-xs font-bold border transition-all w-12 text-center ${
-                                                            person.weight === 1 
-                                                            ? 'bg-[#F2F2F2] text-stone-500 border-[#D7CCC8] hover:bg-[#E6E6E6]' 
-                                                            : 'bg-[#FFE0CC] text-[#E07A5F] border-[#FFCCBC] ring-1 ring-orange-100'
-                                                        }`}
-                                                        title="點擊切換份量"
-                                                    >
-                                                        x{person.weight}
-                                                    </button>
+                                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${getAvatarStyle(index)}`}>{index + 1}</div>
+                                                    <div className="relative flex-1"><input type="text" value={person.name} onChange={(e) => updatePerson(person.id, 'name', e.target.value)} className="w-full bg-[#FFFCF9] border border-[#E6D5C8] focus:border-[#E07A5F] rounded-md px-3 py-1.5 text-stone-800 font-bold text-sm outline-none shadow-sm placeholder-stone-300 transition-all" placeholder={`輸入姓名`} /></div>
+                                                    <button onClick={() => toggleWeight(person.id)} className={`shrink-0 px-2 py-1.5 rounded-md text-xs font-bold border transition-all w-12 text-center ${person.weight === 1 ? 'bg-[#F2F2F2] text-stone-500 border-[#D7CCC8] hover:bg-[#E6E6E6]' : 'bg-[#FFE0CC] text-[#E07A5F] border-[#FFCCBC] ring-1 ring-orange-100'}`} title="點擊切換份量">x{person.weight}</button>
                                                 </div>
                                             </div>
-                                            {mode === MODES.SEPARATE && (
-                                                <div className="w-full sm:w-28 pl-8 sm:pl-0">
-                                                    <div className="relative">
-                                                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-stone-400 text-[10px] font-bold">$</span>
-                                                        <input type="number" placeholder="個人" value={person.personalAmount || ''} onChange={(e) => updatePerson(person.id, 'personalAmount', e.target.value)} className="w-full pl-5 pr-2 py-1.5 text-sm bg-[#FFFCF9] border border-[#E6D5C8] rounded-md focus:ring-2 focus:ring-[#E07A5F] outline-none text-right font-medium text-stone-700" />
-                                                    </div>
-                                                </div>
-                                            )}
-                                            <div className="w-full sm:w-auto sm:min-w-[100px] text-right flex justify-between sm:block items-center pl-8 sm:pl-0">
-                                                <span className="text-xs text-stone-500 font-bold sm:hidden">應付</span>
-                                                <div>
-                                                    <span className="text-base font-bold text-[#E07A5F] block leading-tight">{formatCurrency(peopleResults.find(p => p.id === person.id)?.finalPay || 0)}</span>
-                                                    {mode === MODES.SEPARATE && <div className="text-[9px] text-stone-400 font-medium hidden sm:block">(共食+{Math.round(peopleResults.find(p => p.id === person.id)?.breakdown.shared || 0)})</div>}
-                                                </div>
-                                            </div>
+                                            {mode === MODES.SEPARATE && <div className="w-full sm:w-28 pl-8 sm:pl-0"><div className="relative"><span className="absolute left-2 top-1/2 -translate-y-1/2 text-stone-400 text-[10px] font-bold">$</span><input type="number" placeholder="個人" value={person.personalAmount || ''} onChange={(e) => updatePerson(person.id, 'personalAmount', e.target.value)} className="w-full pl-5 pr-2 py-1.5 text-sm bg-[#FFFCF9] border border-[#E6D5C8] rounded-md focus:ring-2 focus:ring-[#E07A5F] outline-none text-right font-medium text-stone-700" /></div></div>}
+                                            <div className="w-full sm:w-auto sm:min-w-[100px] text-right flex justify-between sm:block items-center pl-8 sm:pl-0"><span className="text-xs text-stone-500 font-bold sm:hidden">應付</span><div><span className="text-base font-bold text-[#E07A5F] block leading-tight">{formatCurrency(peopleResults.find(p => p.id === person.id)?.finalPay || 0)}</span>{mode === MODES.SEPARATE && <div className="text-[9px] text-stone-400 font-medium hidden sm:block">(共食+{Math.round(peopleResults.find(p => p.id === person.id)?.breakdown.shared || 0)})</div>}</div></div>
                                         </div>
                                     ))}
                                     {people.length === 0 && <div className="text-center py-8 text-stone-400"><User size={32} className="mx-auto mb-2 opacity-20" /><p className="text-xs">點擊「增加」開始分帳</p></div>}
                                 </div>
-
-                                {/* Newly added Feature Description Section */}
-                                <div className="mt-6 pt-4 border-t border-[#E6D5C8]">
-                                    <h4 className="text-sm font-bold text-[#E07A5F] mb-2 flex items-center gap-1">
-                                        <span className="text-lg">💡</span> 小幫手特點
-                                    </h4>
-                                    <ul className="text-xs text-stone-500 space-y-1 pl-1">
-                                        <li className="flex items-start gap-1.5">
-                                            <span className="mt-0.5 w-1 h-1 rounded-full bg-[#E07A5F] shrink-0"></span>
-                                            <span><span className="font-bold text-stone-600">彈性模式</span>：隨意切換「全體平分」或「各付各的」。</span>
-                                        </li>
-                                        <li className="flex items-start gap-1.5">
-                                            <span className="mt-0.5 w-1 h-1 rounded-full bg-[#E07A5F] shrink-0"></span>
-                                            <span><span className="font-bold text-stone-600">智慧折扣</span>：支援服務費前/後扣抵，精準計算不吃虧。</span>
-                                        </li>
-                                        <li className="flex items-start gap-1.5">
-                                            <span className="mt-0.5 w-1 h-1 rounded-full bg-[#E07A5F] shrink-0"></span>
-                                            <span><span className="font-bold text-stone-600">份量權重</span>：點擊按鈕切換 x1 (正常) 或 x0.5 (小孩)。</span>
-                                        </li>
-                                        <li className="flex items-start gap-1.5">
-                                            <span className="mt-0.5 w-1 h-1 rounded-full bg-[#E07A5F] shrink-0"></span>
-                                            <span><span className="font-bold text-stone-600">明細存圖</span>：右上角相機按鈕，一鍵生成美觀帳單分享。</span>
-                                        </li>
-                                    </ul>
-                                </div>
+                                <div className="mt-6 pt-4 border-t border-[#E6D5C8]"><h4 className="text-sm font-bold text-[#E07A5F] mb-2 flex items-center gap-1"><span className="text-lg">💡</span> 小幫手特點</h4><ul className="text-xs text-stone-500 space-y-1 pl-1"><li className="flex items-start gap-1.5"><span className="mt-0.5 w-1 h-1 rounded-full bg-[#E07A5F] shrink-0"></span><span><span className="font-bold text-stone-600">彈性模式</span>：隨意切換「全體平分」或「各付各的」。</span></li><li className="flex items-start gap-1.5"><span className="mt-0.5 w-1 h-1 rounded-full bg-[#E07A5F] shrink-0"></span><span><span className="font-bold text-stone-600">智慧折扣</span>：支援服務費前/後扣抵，精準計算不吃虧。</span></li><li className="flex items-start gap-1.5"><span className="mt-0.5 w-1 h-1 rounded-full bg-[#E07A5F] shrink-0"></span><span><span className="font-bold text-stone-600">份量權重</span>：點擊按鈕切換 x1 (正常) 或 x0.5 (小孩)。</span></li><li className="flex items-start gap-1.5"><span className="mt-0.5 w-1 h-1 rounded-full bg-[#E07A5F] shrink-0"></span><span><span className="font-bold text-stone-600">明細存圖</span>：右上角相機按鈕，一鍵生成美觀帳單分享。</span></li><li className="flex items-start gap-1.5"><span className="mt-0.5 w-1 h-1 rounded-full bg-[#E07A5F] shrink-0"></span><span><span className="font-bold text-stone-600">加入桌面</span>：隱藏網址列，享受全螢幕 App 體驗。</span></li></ul></div>
                             </Card>
-
                             <Card className="!bg-[#3D405B] text-white border-none shadow-xl shadow-stone-300 lg:hidden mt-2">
-                                <div className="flex justify-between items-center">
-                                    <div>
-                                        <span className="block text-white/80 text-xs font-medium">總金額 (含費)</span>
-                                        <span className="text-2xl font-bold text-white">{formatCurrency(totals.grandTotal)}</span>
-                                    </div>
-                                    <div className="text-right text-xs text-white/80 font-medium">
-                                        <div>服務費: {formatCurrency(totals.serviceFee)}</div>
-                                        {totals.discount > 0 && <div className="text-[#E07A5F]">折扣: -{formatCurrency(totals.discount)}</div>}
-                                    </div>
-                                </div>
+                                <div className="flex justify-between items-center"><div><span className="block text-white/80 text-xs font-medium">總金額 (含費)</span><span className="text-2xl font-bold text-white">{formatCurrency(totals.grandTotal)}</span></div><div className="text-right text-xs text-white/80 font-medium"><div>服務費: {formatCurrency(totals.serviceFee)}</div>{totals.discount > 0 && <div className="text-[#E07A5F]">折扣: -{formatCurrency(totals.discount)}</div>}</div></div>
                             </Card>
                         </div>
                     </div>
 
-                    {/* 收據截圖與模態窗 */}
                     <HiddenReceipt people={peopleResults} totals={totals} serviceCharge={serviceCharge} mode={mode} date={formatDate()} />
                     <ReceiptModal isOpen={showReceipt} onClose={() => setShowReceipt(false)} imgSrc={receiptImg} />
-
+                    <ShareModal isOpen={showShare} onClose={() => setShowShare(false)} />
+                    <GuideModal isOpen={showGuide} onClose={() => setShowGuide(false)} />
                 </div>
             );
         }
