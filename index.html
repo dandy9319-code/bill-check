@@ -3,20 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>分帳小幫手 v2.2.1</title>
+    <title>分帳小幫手 v2.2.2</title>
     
-    <!-- 強制瀏覽器不快取 HTML (解決更新後手機仍顯示舊版的問題) -->
+    <!-- 強制瀏覽器不快取 HTML -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
 
-    <!-- PWA 設定 (隱藏瀏覽器工具列) -->
+    <!-- PWA 設定 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="分帳小幫手">
 
-    <!-- 設定 App Icon (使用 CDN 加速並指定尺寸，已修正 URL 編碼問題) -->
+    <!-- 設定 App Icon -->
     <link rel="icon" href="https://wsrv.nl/?url=https%3A%2F%2Fdrive.google.com%2Fuc%3Fexport%3Dview%26id%3D1dhOMUAE1lZ2faIDdyd7jtJZbZf-f1C6u&w=192&output=png" type="image/png">
     <link rel="apple-touch-icon" href="https://wsrv.nl/?url=https%3A%2F%2Fdrive.google.com%2Fuc%3Fexport%3Dview%26id%3D1dhOMUAE1lZ2faIDdyd7jtJZbZf-f1C6u&w=180&output=png">
     
@@ -67,11 +67,12 @@
         const { useState, useMemo, useRef } = React;
 
         /**
-         * 版本: v2.2.1
-         * 專案: 分帳小幫手 (Cache Busting)
+         * 版本: v2.2.2
+         * 專案: 分帳小幫手 (Mobile Share/Download Fix)
          * 修改重點:
-         * 1. 新增 meta tags (Cache-Control, Pragma, Expires) 以防止瀏覽器過度快取舊版 HTML。
-         * 2. 更新版本號顯示為 v2.2.1。
+         * 1. 重寫 handleDownloadImage：優先使用 navigator.share (Web Share API) 處理檔案。
+         * 這能解決 iOS 上無法直接下載圖片到相簿的問題。
+         * 2. 更新按鈕文字為「分享 / 儲存圖片」。
          */
 
         // --- Assets ---
@@ -84,15 +85,33 @@
         const GUIDE_IMG_URL = "https://drive.google.com/uc?export=view&id=1c_xatKsfeRrbY51LTT5XAdkiXY9j5QyW";
         const PROXY_GUIDE_IMG_URL = `https://wsrv.nl/?url=${encodeURIComponent(GUIDE_IMG_URL)}`;
 
-        // --- Helper: Download Image Logic ---
+        // --- Helper: Universal Image Share/Download Logic ---
         const handleDownloadImage = async (imgUrl, fileName) => {
             try {
-                // 如果是 base64 (收據)，直接轉換
-                // 如果是網址 (教學圖)，先 fetch
+                // 1. 將圖片 URL (或是 base64) 轉換為 Blob 物件
                 const response = await fetch(imgUrl);
                 const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
                 
+                // 2. 建立 File 物件 (這是 Web Share API 需要的格式)
+                const file = new File([blob], fileName, { type: blob.type });
+
+                // 3. 嘗試使用手機原生的分享選單 (iOS/Android 推薦)
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    try {
+                        await navigator.share({
+                            files: [file],
+                            title: '分帳小幫手圖片',
+                            text: '這是您的分帳圖片！'
+                        });
+                        return; // 如果分享成功，就結束函式
+                    } catch (shareError) {
+                        console.log('Share API cancelled or failed, falling back to download', shareError);
+                        // 如果使用者取消分享，或分享失敗，則繼續執行下方的傳統下載邏輯
+                    }
+                }
+
+                // 4. 傳統下載方式 (電腦版或不支援分享的瀏覽器)
+                const url = window.URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = url;
                 link.download = fileName;
@@ -101,9 +120,10 @@
                 
                 document.body.removeChild(link);
                 window.URL.revokeObjectURL(url);
+
             } catch (error) {
-                console.error("Download failed:", error);
-                alert("下載失敗，請嘗試長按圖片儲存");
+                console.error("Download/Share failed:", error);
+                alert("無法自動開啟分享選單。請直接長按圖片進行儲存。");
             }
         };
 
@@ -335,7 +355,7 @@
                                 onClick={() => handleDownloadImage(PROXY_GUIDE_IMG_URL, '加入桌面教學.png')}
                                 className="inline-block px-4 py-2 bg-[#E07A5F] text-white text-xs font-bold rounded-full shadow-md hover:bg-[#D0654B] transition-colors"
                             >
-                                下載教學圖片
+                                分享 / 儲存圖片
                             </button>
                         </div>
                     </div>
@@ -360,9 +380,9 @@
                                 onClick={() => handleDownloadImage(imgSrc, `聚餐分帳_${new Date().toISOString().slice(0,10)}.png`)}
                                 className="block w-full py-3 bg-[#E07A5F] hover:bg-[#D0654B] text-white text-center font-bold rounded-xl transition-colors shadow-lg shadow-orange-100"
                             >
-                                下載圖片
+                                分享 / 儲存圖片
                             </button>
-                            <p className="text-[10px] text-center text-stone-400">或長按圖片儲存分享</p>
+                            <p className="text-[10px] text-center text-stone-400">若無反應請長按圖片儲存</p>
                         </div>
                     </div>
                 </div>
@@ -443,7 +463,7 @@
                                     <div className="w-10 h-10 rounded-lg shadow-md shadow-orange-200 overflow-hidden shrink-0">
                                         <img src={PROXY_LOGO_URL} alt="Logo" className="w-full h-full object-cover" />
                                     </div>
-                                    <div><h1 className="text-xl font-bold text-[#4A403A] tracking-tight leading-tight">分帳小幫手</h1><p className="text-[10px] text-stone-500 font-medium">v2.2.1</p></div>
+                                    <div><h1 className="text-xl font-bold text-[#4A403A] tracking-tight leading-tight">分帳小幫手</h1><p className="text-[10px] text-stone-500 font-medium">v2.2.2</p></div>
                                 </div>
                                 <div className="flex gap-2">
                                     <HeaderButton icon={Camera} onClick={generateReceipt} label="生成圖片" />
