@@ -3,16 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>聚餐分帳小幫手 v2.1.1</title>
+    <title>分帳小幫手 v2.1.2</title>
     
     <!-- PWA 設定 (隱藏瀏覽器工具列) -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="分帳小幫手">
 
-    <!-- 設定 App Icon (使用 CDN 加速並指定尺寸) -->
-    <link rel="icon" href="https://wsrv.nl/?url=https://drive.google.com/uc?export=view&id=1dhOMUAE1lZ2faIDdyd7jtJZbZf-f1C6u&w=192&output=png" type="image/png">
-    <link rel="apple-touch-icon" href="https://wsrv.nl/?url=https://drive.google.com/uc?export=view&id=1dhOMUAE1lZ2faIDdyd7jtJZbZf-f1C6u&w=180&output=png">
+    <!-- 設定 App Icon (使用 CDN 加速並指定尺寸，已修正 URL 編碼問題) -->
+    <link rel="icon" href="https://wsrv.nl/?url=https%3A%2F%2Fdrive.google.com%2Fuc%3Fexport%3Dview%26id%3D1dhOMUAE1lZ2faIDdyd7jtJZbZf-f1C6u&w=192&output=png" type="image/png">
+    <link rel="apple-touch-icon" href="https://wsrv.nl/?url=https%3A%2F%2Fdrive.google.com%2Fuc%3Fexport%3Dview%26id%3D1dhOMUAE1lZ2faIDdyd7jtJZbZf-f1C6u&w=180&output=png">
     
     <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -61,20 +62,18 @@
         const { useState, useMemo, useRef } = React;
 
         /**
-         * 版本: v2.1.1
-         * 專案: 聚餐分帳小幫手 (Label Update)
+         * 版本: v2.1.2
+         * 專案: 分帳小幫手 (Icon Fix & Title Update)
          * 修改重點:
-         * 1. 修改外帶欄位標籤為「外帶(免服務費)」。
-         * 2. 移除外帶欄位的副標籤「無」。
+         * 1. 修正 HTML head 中的 App Icon 連結 (URL encoding)，解決加入桌面不顯示 Logo 的問題。
+         * 2. 應用程式名稱全面更新為「分帳小幫手」。
          */
 
         // --- Assets ---
         const LOGO_URL = "https://drive.google.com/uc?export=view&id=1dhOMUAE1lZ2faIDdyd7jtJZbZf-f1C6u";
-        // Logo 代理 (加速顯示)
         const PROXY_LOGO_URL = `https://wsrv.nl/?url=${encodeURIComponent(LOGO_URL)}&w=100&output=png`;
 
         const QR_CODE_URL = "https://drive.google.com/uc?export=view&id=1_gZxk_FmAJez9E_bvr2OeytzG1du5rvA";
-        // QR Code 代理 (高解析度 & PNG 格式以確保清晰)
         const PROXY_QR_CODE_URL = `https://wsrv.nl/?url=${encodeURIComponent(QR_CODE_URL)}&w=300&output=png`;
         
         const GUIDE_IMG_URL = "https://drive.google.com/uc?export=view&id=1c_xatKsfeRrbY51LTT5XAdkiXY9j5QyW";
@@ -87,7 +86,6 @@
         const Plus = (props) => <IconBase {...props}><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></IconBase>;
         const Trash2 = (props) => <IconBase {...props}><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></IconBase>;
         const User = (props) => <IconBase {...props}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></IconBase>;
-        // Calculator icon removed in favor of Image Logo
         const Receipt = (props) => <IconBase {...props}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1Z"></path><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"></path><path d="M12 17V7"></path></IconBase>;
         const DollarSign = (props) => <IconBase {...props}><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></IconBase>;
         const Coffee = (props) => <IconBase {...props}><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></IconBase>;
@@ -336,7 +334,7 @@
         const HiddenReceipt = ({ people, totals, serviceCharge, mode, date }) => (
             <div id="receipt-capture" style={{ position: 'absolute', top: '-9999px', left: '-9999px', width: '400px', backgroundColor: '#FFF9F0', padding: '30px', fontFamily: 'sans-serif', color: '#4A403A' }}>
                 <div style={{ textAlign: 'center', marginBottom: '20px', borderBottom: '2px dashed #D7CCC8', paddingBottom: '20px' }}>
-                    <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#E07A5F', margin: 0 }}>聚餐分帳明細</h2>
+                    <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#E07A5F', margin: 0 }}>分帳小幫手明細</h2>
                     <p style={{ fontSize: '12px', color: '#8D7F75', marginTop: '5px' }}>{date}</p>
                 </div>
                 <div style={{ marginBottom: '20px', fontSize: '14px' }}>
@@ -356,7 +354,7 @@
                 </div>
                 <div style={{ textAlign: 'center', borderTop: '1px solid #EFE6E0', paddingTop: '20px' }}>
                     <img src={PROXY_QR_CODE_URL} crossOrigin="anonymous" style={{ width: '80px', height: '80px', margin: '0 auto 10px', mixBlendMode: 'multiply' }} />
-                    <div style={{ fontSize: '10px', color: '#D7CCC8' }}>Generated by 聚餐分帳小幫手</div>
+                    <div style={{ fontSize: '10px', color: '#D7CCC8' }}>Generated by 分帳小幫手</div>
                 </div>
             </div>
         );
@@ -407,7 +405,7 @@
                                     <div className="w-10 h-10 rounded-lg shadow-md shadow-orange-200 overflow-hidden shrink-0">
                                         <img src={PROXY_LOGO_URL} alt="Logo" className="w-full h-full object-cover" />
                                     </div>
-                                    <div><h1 className="text-xl font-bold text-[#4A403A] tracking-tight leading-tight">聚餐分帳小幫手</h1><p className="text-[10px] text-stone-500 font-medium">v2.1.1</p></div>
+                                    <div><h1 className="text-xl font-bold text-[#4A403A] tracking-tight leading-tight">分帳小幫手</h1><p className="text-[10px] text-stone-500 font-medium">v2.1.2</p></div>
                                 </div>
                                 <div className="flex gap-2">
                                     <HeaderButton icon={Camera} onClick={generateReceipt} label="生成圖片" />
