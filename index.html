@@ -2,8 +2,8 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>分帳小幫手 v2.1.2</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>分帳小幫手 v2.2.0</title>
     
     <!-- PWA 設定 (隱藏瀏覽器工具列) -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -62,11 +62,12 @@
         const { useState, useMemo, useRef } = React;
 
         /**
-         * 版本: v2.1.2
-         * 專案: 分帳小幫手 (Icon Fix & Title Update)
+         * 版本: v2.2.0
+         * 專案: 分帳小幫手 (Download Fix & Safe Area)
          * 修改重點:
-         * 1. 修正 HTML head 中的 App Icon 連結 (URL encoding)，解決加入桌面不顯示 Logo 的問題。
-         * 2. 應用程式名稱全面更新為「分帳小幫手」。
+         * 1. 修復下載功能：改用 Blob 方式處理圖片下載，避免跨網域跳轉或下載失敗。
+         * 2. 版面修正：加入 safe-area-inset-top 支援，解決全螢幕模式下狀態列遮擋問題。
+         * 3. 優化圖片載入與按鈕行為。
          */
 
         // --- Assets ---
@@ -78,6 +79,29 @@
         
         const GUIDE_IMG_URL = "https://drive.google.com/uc?export=view&id=1c_xatKsfeRrbY51LTT5XAdkiXY9j5QyW";
         const PROXY_GUIDE_IMG_URL = `https://wsrv.nl/?url=${encodeURIComponent(GUIDE_IMG_URL)}`;
+
+        // --- Helper: Download Image Logic ---
+        const handleDownloadImage = async (imgUrl, fileName) => {
+            try {
+                // 如果是 base64 (收據)，直接轉換
+                // 如果是網址 (教學圖)，先 fetch
+                const response = await fetch(imgUrl);
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = fileName;
+                document.body.appendChild(link);
+                link.click();
+                
+                document.body.removeChild(link);
+                window.URL.revokeObjectURL(url);
+            } catch (error) {
+                console.error("Download failed:", error);
+                alert("下載失敗，請嘗試長按圖片儲存");
+            }
+        };
 
         // --- Icon Components ---
         const IconBase = ({ children, size = 20, className = "" }) => (
@@ -303,7 +327,12 @@
                         </div>
                         <div className="flex-1 overflow-auto p-4 bg-stone-50 text-center">
                             <img src={PROXY_GUIDE_IMG_URL} crossOrigin="anonymous" alt="加入桌面教學" className="w-full h-auto rounded-lg shadow-sm mb-4" />
-                            <a href={PROXY_GUIDE_IMG_URL} download="加入桌面教學.png" className="inline-block px-4 py-2 bg-[#E07A5F] text-white text-xs font-bold rounded-full shadow-md hover:bg-[#D0654B] transition-colors">下載教學圖片</a>
+                            <button 
+                                onClick={() => handleDownloadImage(PROXY_GUIDE_IMG_URL, '加入桌面教學.png')}
+                                className="inline-block px-4 py-2 bg-[#E07A5F] text-white text-xs font-bold rounded-full shadow-md hover:bg-[#D0654B] transition-colors"
+                            >
+                                下載教學圖片
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -323,7 +352,12 @@
                             {imgSrc ? <img src={imgSrc} alt="分帳明細" className="shadow-lg rounded-lg max-w-full h-auto object-contain" /> : <div className="flex items-center justify-center h-40 text-stone-400">生成中...</div>}
                         </div>
                         <div className="p-4 border-t border-stone-100 bg-white space-y-2">
-                             <a href={imgSrc} download={`聚餐分帳_${new Date().toISOString().slice(0,10)}.png`} className="block w-full py-3 bg-[#E07A5F] hover:bg-[#D0654B] text-white text-center font-bold rounded-xl transition-colors shadow-lg shadow-orange-100">下載圖片</a>
+                             <button 
+                                onClick={() => handleDownloadImage(imgSrc, `聚餐分帳_${new Date().toISOString().slice(0,10)}.png`)}
+                                className="block w-full py-3 bg-[#E07A5F] hover:bg-[#D0654B] text-white text-center font-bold rounded-xl transition-colors shadow-lg shadow-orange-100"
+                            >
+                                下載圖片
+                            </button>
                             <p className="text-[10px] text-center text-stone-400">或長按圖片儲存分享</p>
                         </div>
                     </div>
@@ -397,7 +431,7 @@
             };
 
             return (
-                <div className="min-h-screen font-sans p-3 md:p-6 w-full overflow-x-hidden">
+                <div className="min-h-screen font-sans p-3 md:p-6 w-full overflow-x-hidden pt-[calc(env(safe-area-inset-top)+0.75rem)]">
                     <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-3 w-full">
                         <div className="lg:col-span-12 mb-1 lg:mb-2">
                             <div className="flex items-center justify-between">
@@ -405,7 +439,7 @@
                                     <div className="w-10 h-10 rounded-lg shadow-md shadow-orange-200 overflow-hidden shrink-0">
                                         <img src={PROXY_LOGO_URL} alt="Logo" className="w-full h-full object-cover" />
                                     </div>
-                                    <div><h1 className="text-xl font-bold text-[#4A403A] tracking-tight leading-tight">分帳小幫手</h1><p className="text-[10px] text-stone-500 font-medium">v2.1.2</p></div>
+                                    <div><h1 className="text-xl font-bold text-[#4A403A] tracking-tight leading-tight">分帳小幫手</h1><p className="text-[10px] text-stone-500 font-medium">v2.2.0</p></div>
                                 </div>
                                 <div className="flex gap-2">
                                     <HeaderButton icon={Camera} onClick={generateReceipt} label="生成圖片" />
