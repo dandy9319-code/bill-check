@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>分帳小幫手 v2.2.3</title>
+    <title>分帳小幫手 v2.2.4</title>
     
     <!-- 強制瀏覽器不快取 HTML -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -67,11 +67,11 @@
         const { useState, useMemo, useRef } = React;
 
         /**
-         * 版本: v2.2.3
-         * 專案: 分帳小幫手 (Mobile Summary Layout Update)
+         * 版本: v2.2.4
+         * 專案: 分帳小幫手 (Receipt Detail Update)
          * 修改重點:
-         * 1. 修正「總金額 (含費)」用語為「應付總額」。
-         * 2. 行動版總結卡片改為條列式呈現 (餐費、服務費、折扣)，清楚展示計算過程。
+         * 1. 分帳明細圖 (HiddenReceipt) 在折扣欄位增加顯示詳細資訊。
+         * 2. 若為百分比折扣，顯示「(X折 / Y% off)」。
          */
 
         // --- Assets ---
@@ -133,7 +133,7 @@
         const Share2 = (props) => <IconBase {...props}><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></IconBase>;
         const Download = (props) => <IconBase {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></IconBase>;
         const Tag = (props) => <IconBase {...props}><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></IconBase>;
-        const Settings = (props) => <IconBase {...props}><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></IconBase>;
+        const Settings = (props) => <IconBase {...props}><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></IconBase>;
         const CheckCircle = (props) => <IconBase {...props}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></IconBase>;
         const Circle = (props) => <IconBase {...props}><circle cx="12" cy="12" r="10"></circle></IconBase>;
         const Camera = (props) => <IconBase {...props}><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></IconBase>;
@@ -382,7 +382,7 @@
             );
         };
 
-        const HiddenReceipt = ({ people, totals, serviceCharge, mode, date }) => (
+        const HiddenReceipt = ({ people, totals, serviceCharge, mode, date, discountType, discountValue }) => (
             <div id="receipt-capture" style={{ position: 'absolute', top: '-9999px', left: '-9999px', width: '400px', backgroundColor: '#FFF9F0', padding: '30px', fontFamily: 'sans-serif', color: '#4A403A' }}>
                 <div style={{ textAlign: 'center', marginBottom: '20px', borderBottom: '2px dashed #D7CCC8', paddingBottom: '20px' }}>
                     <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#E07A5F', margin: 0 }}>分帳小幫手明細</h2>
@@ -391,7 +391,17 @@
                 <div style={{ marginBottom: '20px', fontSize: '14px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}><span>餐費小計</span><span style={{ fontWeight: 'bold' }}>{formatCurrency(totals.subtotal)}</span></div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}><span>服務費 ({serviceCharge}%)</span><span style={{ fontWeight: 'bold' }}>{formatCurrency(totals.serviceFee)}</span></div>
-                    {totals.discount > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px', color: '#E07A5F' }}><span>折扣</span><span style={{ fontWeight: 'bold' }}>-{formatCurrency(totals.discount)}</span></div>}
+                    {totals.discount > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px', color: '#E07A5F' }}>
+                        <span>
+                            折扣
+                            {discountType === DISCOUNT_TYPES.PERCENT && (
+                                <span style={{ fontSize: '11px', marginLeft: '4px', fontWeight: 'normal' }}>
+                                    ({(100 - parseFloat(discountValue)) / 10}折 / {discountValue}% off)
+                                </span>
+                            )}
+                        </span>
+                        <span style={{ fontWeight: 'bold' }}>-{formatCurrency(totals.discount)}</span>
+                    </div>}
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px', paddingTop: '10px', borderTop: '1px solid #D7CCC8', fontSize: '18px', fontWeight: 'bold', color: '#E07A5F' }}><span>總金額</span><span>{formatCurrency(totals.grandTotal)}</span></div>
                 </div>
                 <div style={{ borderTop: '2px dashed #D7CCC8', paddingTop: '20px', marginBottom: '20px' }}>
@@ -456,7 +466,7 @@
                                     <div className="w-10 h-10 rounded-lg shadow-md shadow-orange-200 overflow-hidden shrink-0">
                                         <img src={PROXY_LOGO_URL} alt="Logo" className="w-full h-full object-cover" />
                                     </div>
-                                    <div><h1 className="text-xl font-bold text-[#4A403A] tracking-tight leading-tight">分帳小幫手</h1><p className="text-[10px] text-stone-500 font-medium">v2.2.3</p></div>
+                                    <div><h1 className="text-xl font-bold text-[#4A403A] tracking-tight leading-tight">分帳小幫手</h1><p className="text-[10px] text-stone-500 font-medium">v2.2.4</p></div>
                                 </div>
                                 <div className="flex gap-2">
                                     <HeaderButton icon={Camera} onClick={generateReceipt} label="生成圖片" />
@@ -539,7 +549,7 @@
                         </div>
                     </div>
 
-                    <HiddenReceipt people={peopleResults} totals={totals} serviceCharge={serviceCharge} mode={mode} date={formatDate()} />
+                    <HiddenReceipt people={peopleResults} totals={totals} serviceCharge={serviceCharge} mode={mode} date={formatDate()} discountType={discountType} discountValue={discountValue} />
                     <ReceiptModal isOpen={showReceipt} onClose={() => setShowReceipt(false)} imgSrc={receiptImg} />
                     <ShareModal isOpen={showShare} onClose={() => setShowShare(false)} />
                     <GuideModal isOpen={showGuide} onClose={() => setShowGuide(false)} />
