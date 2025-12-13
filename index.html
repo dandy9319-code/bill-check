@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>分帳小幫手 v2.2.2</title>
+    <title>分帳小幫手 v2.2.3</title>
     
     <!-- 強制瀏覽器不快取 HTML -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -67,12 +67,11 @@
         const { useState, useMemo, useRef } = React;
 
         /**
-         * 版本: v2.2.2
-         * 專案: 分帳小幫手 (Mobile Share/Download Fix)
+         * 版本: v2.2.3
+         * 專案: 分帳小幫手 (Mobile Summary Layout Update)
          * 修改重點:
-         * 1. 重寫 handleDownloadImage：優先使用 navigator.share (Web Share API) 處理檔案。
-         * 這能解決 iOS 上無法直接下載圖片到相簿的問題。
-         * 2. 更新按鈕文字為「分享 / 儲存圖片」。
+         * 1. 修正「總金額 (含費)」用語為「應付總額」。
+         * 2. 行動版總結卡片改為條列式呈現 (餐費、服務費、折扣)，清楚展示計算過程。
          */
 
         // --- Assets ---
@@ -88,14 +87,10 @@
         // --- Helper: Universal Image Share/Download Logic ---
         const handleDownloadImage = async (imgUrl, fileName) => {
             try {
-                // 1. 將圖片 URL (或是 base64) 轉換為 Blob 物件
                 const response = await fetch(imgUrl);
                 const blob = await response.blob();
-                
-                // 2. 建立 File 物件 (這是 Web Share API 需要的格式)
                 const file = new File([blob], fileName, { type: blob.type });
 
-                // 3. 嘗試使用手機原生的分享選單 (iOS/Android 推薦)
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
                     try {
                         await navigator.share({
@@ -103,14 +98,12 @@
                             title: '分帳小幫手圖片',
                             text: '這是您的分帳圖片！'
                         });
-                        return; // 如果分享成功，就結束函式
+                        return;
                     } catch (shareError) {
                         console.log('Share API cancelled or failed, falling back to download', shareError);
-                        // 如果使用者取消分享，或分享失敗，則繼續執行下方的傳統下載邏輯
                     }
                 }
 
-                // 4. 傳統下載方式 (電腦版或不支援分享的瀏覽器)
                 const url = window.URL.createObjectURL(blob);
                 const link = document.createElement('a');
                 link.href = url;
@@ -463,7 +456,7 @@
                                     <div className="w-10 h-10 rounded-lg shadow-md shadow-orange-200 overflow-hidden shrink-0">
                                         <img src={PROXY_LOGO_URL} alt="Logo" className="w-full h-full object-cover" />
                                     </div>
-                                    <div><h1 className="text-xl font-bold text-[#4A403A] tracking-tight leading-tight">分帳小幫手</h1><p className="text-[10px] text-stone-500 font-medium">v2.2.2</p></div>
+                                    <div><h1 className="text-xl font-bold text-[#4A403A] tracking-tight leading-tight">分帳小幫手</h1><p className="text-[10px] text-stone-500 font-medium">v2.2.3</p></div>
                                 </div>
                                 <div className="flex gap-2">
                                     <HeaderButton icon={Camera} onClick={generateReceipt} label="生成圖片" />
@@ -489,7 +482,7 @@
                             </Card>
                             <Card className="!bg-[#3D405B] text-white border-none shadow-xl shadow-stone-300 hidden lg:block">
                                 <div className="space-y-3">
-                                    <div className="flex justify-between items-end border-b border-white/20 pb-3"><span className="text-white/80 font-medium text-sm">總金額 (含費)</span><span className="text-3xl font-bold tracking-tight text-white">{formatCurrency(totals.grandTotal)}</span></div>
+                                    <div className="flex justify-between items-end border-b border-white/20 pb-3"><span className="text-white/80 font-medium text-sm">應付總額</span><span className="text-3xl font-bold tracking-tight text-white">{formatCurrency(totals.grandTotal)}</span></div>
                                     <div className="grid grid-cols-2 gap-4 text-xs text-white/80"><div><span className="block opacity-60 mb-0.5">餐費小計</span><span className="font-semibold text-white text-base">{formatCurrency(totals.subtotal)}</span></div><div><span className="block opacity-60 mb-0.5">服務費總計</span><span className="font-semibold text-white text-base">{formatCurrency(totals.serviceFee)}</span></div></div>
                                     {totals.discount > 0 && <div className="pt-2 border-t border-white/20 text-xs text-[#E07A5F] flex justify-between"><span>已扣除折扣</span><span>-{formatCurrency(totals.discount)}</span></div>}
                                 </div>
@@ -518,8 +511,30 @@
                                 </div>
                                 <div className="mt-6 pt-4 border-t border-[#E6D5C8]"><h4 className="text-sm font-bold text-[#E07A5F] mb-2 flex items-center gap-1"><span className="text-lg">💡</span> 小幫手特點</h4><ul className="text-xs text-stone-500 space-y-1 pl-1"><li className="flex items-start gap-1.5"><span className="mt-0.5 w-1 h-1 rounded-full bg-[#E07A5F] shrink-0"></span><span><span className="font-bold text-stone-600">彈性模式</span>：隨意切換「全體平分」或「各付各的」。</span></li><li className="flex items-start gap-1.5"><span className="mt-0.5 w-1 h-1 rounded-full bg-[#E07A5F] shrink-0"></span><span><span className="font-bold text-stone-600">智慧折扣</span>：支援服務費前/後扣抵，精準計算不吃虧。</span></li><li className="flex items-start gap-1.5"><span className="mt-0.5 w-1 h-1 rounded-full bg-[#E07A5F] shrink-0"></span><span><span className="font-bold text-stone-600">份量權重</span>：點擊按鈕切換 x1 (正常) 或 x0.5 (小孩)。</span></li><li className="flex items-start gap-1.5"><span className="mt-0.5 w-1 h-1 rounded-full bg-[#E07A5F] shrink-0"></span><span><span className="font-bold text-stone-600">明細存圖</span>：右上角相機按鈕，一鍵生成美觀帳單分享。</span></li><li className="flex items-start gap-1.5"><span className="mt-0.5 w-1 h-1 rounded-full bg-[#E07A5F] shrink-0"></span><span><span className="font-bold text-stone-600">加入桌面</span>：隱藏網址列，享受全螢幕 App 體驗。</span></li></ul></div>
                             </Card>
+                            {/* Mobile Summary Card (Updated Layout) */}
                             <Card className="!bg-[#3D405B] text-white border-none shadow-xl shadow-stone-300 lg:hidden mt-2">
-                                <div className="flex justify-between items-center"><div><span className="block text-white/80 text-xs font-medium">總金額 (含費)</span><span className="text-2xl font-bold text-white">{formatCurrency(totals.grandTotal)}</span></div><div className="text-right text-xs text-white/80 font-medium"><div>服務費: {formatCurrency(totals.serviceFee)}</div>{totals.discount > 0 && <div className="text-[#E07A5F]">折扣: -{formatCurrency(totals.discount)}</div>}</div></div>
+                                <div className="space-y-3">
+                                    <div className="text-xs text-white/70 space-y-1">
+                                        <div className="flex justify-between">
+                                            <span>餐費小計</span>
+                                            <span>{formatCurrency(totals.subtotal)}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span>+ 服務費</span>
+                                            <span>{formatCurrency(totals.serviceFee)}</span>
+                                        </div>
+                                        {totals.discount > 0 && (
+                                            <div className="flex justify-between text-[#E07A5F]">
+                                                <span>- 折扣</span>
+                                                <span>{formatCurrency(totals.discount)}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="border-t border-white/20 pt-2 flex justify-between items-end">
+                                        <span className="font-bold text-sm text-white/90">應付總額</span>
+                                        <span className="text-2xl font-bold text-white leading-none">{formatCurrency(totals.grandTotal)}</span>
+                                    </div>
+                                </div>
                             </Card>
                         </div>
                     </div>
