@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>分帳小幫手 v2.2.5</title>
+    <title>分帳小幫手 v2.2.6</title>
     
     <!-- 強制瀏覽器不快取 HTML -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -71,14 +71,13 @@
         const { useState, useMemo, useRef, useEffect } = React;
 
         /**
-         * 版本: v2.2.5
-         * 專案: 分帳小幫手 (Auto-Update Checker)
+         * 版本: v2.2.6
+         * 專案: 分帳小幫手 (Receipt Style Fix)
          * 修改重點:
-         * 1. 增加自動版本檢查機制 (useCheckUpdate)。
-         * 2. 當檢測到新版本時，顯示底部提示橫幅。
+         * 1. 調整分帳明細圖中，折扣百分比的顯示格式，在數字與 % 之間增加空白，避免文字重疊。
          */
 
-        const CURRENT_VERSION = "v2.2.5";
+        const CURRENT_VERSION = "v2.2.6";
 
         // --- Assets ---
         const LOGO_URL = "https://drive.google.com/uc?export=view&id=1dhOMUAE1lZ2faIDdyd7jtJZbZf-f1C6u";
@@ -431,7 +430,7 @@
                             折扣
                             {discountType === DISCOUNT_TYPES.PERCENT && (
                                 <span style={{ fontSize: '11px', marginLeft: '4px', fontWeight: 'normal' }}>
-                                    ({(100 - parseFloat(discountValue)) / 10}折 / {discountValue}% off)
+                                    ({(100 - parseFloat(discountValue)) / 10}折 / {discountValue} % off) 
                                 </span>
                             )}
                         </span>
