@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>分帳小幫手 v2.3.1</title>
+    <title>分帳小幫手 v2.3.2</title>
     
     <!-- 強制瀏覽器不快取 HTML -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -71,13 +71,14 @@
         const { useState, useMemo, useRef, useEffect } = React;
 
         /**
-         * 版本: v2.3.1
-         * 專案: 分帳小幫手 (Bug Fix)
+         * 版本: v2.3.2
+         * 專案: 分帳小幫手 (Extra Charge Name)
          * 修改重點:
-         * 1. 補回遺失的 useCheckUpdate Hook 定義，解決 ReferenceError。
+         * 1. ExtraChargeModule 新增「品項名稱」輸入欄位。
+         * 2. HiddenReceipt 支援顯示自訂的額外加點名稱 (取代預設的"額")。
          */
 
-        const CURRENT_VERSION = "v2.3.1";
+        const CURRENT_VERSION = "v2.3.2";
 
         // --- Assets ---
         const LOGO_URL = "https://drive.google.com/uc?export=view&id=1dhOMUAE1lZ2faIDdyd7jtJZbZf-f1C6u";
@@ -96,10 +97,8 @@
             useEffect(() => {
                 const checkUpdate = async () => {
                     try {
-                        // 加入時間戳記避免讀到快取
                         const response = await fetch(`./index.html?t=${new Date().getTime()}`);
                         const text = await response.text();
-                        // 尋找版本號字串
                         const match = text.match(/const CURRENT_VERSION = "(v\d+\.\d+\.\d+)";/);
                         if (match && match[1] !== CURRENT_VERSION) {
                             setNewVersion(match[1]);
@@ -108,12 +107,9 @@
                         console.log("Check update failed", e);
                     }
                 };
-                
-                // 延遲檢查，避免影響首屏載入
                 const timer = setTimeout(checkUpdate, 2000);
                 return () => clearTimeout(timer);
             }, []);
-
             return newVersion;
         };
 
@@ -201,11 +197,8 @@
             const taxMultiplier = 1 + (serviceChargeRate / 100);
             
             // 1. 額外加點計算 (Extra Charge)
-            // 視為內用加點，需加服務費
             const extraChargeWithTax = extraChargeAmount * taxMultiplier;
             const extraChargeFee = extraChargeAmount * (serviceChargeRate / 100);
-            
-            // 找出被選中的人
             const selectedPayersCount = extraChargePayers.length;
             const extraPerPerson = selectedPayersCount > 0 ? extraChargeWithTax / selectedPayersCount : 0;
 
@@ -214,10 +207,6 @@
             let discountAmount = 0;
             let totalServiceFee = 0;
 
-            // 總服務費初始值 = 主餐服務費 + 額外加點服務費
-            // 注意：折扣通常只針對「主餐+個人」的部分，額外加點通常是獨立計算的，這裡假設折扣不影響額外加點
-            // 若要讓折扣也影響額外加點，邏輯會更複雜。為求直觀，這裡將額外加點視為獨立項目疊加。
-            
             if (discountType === DISCOUNT_TYPES.AMOUNT) {
                 const amount = discountValue || 0;
                 discountAmount = amount;
@@ -263,10 +252,7 @@
 
                 totalIndividualBase += personalBase;
                 const myShared = sharedPerWeightUnit * weight;
-                
-                // 檢查是否需分攤額外費用
                 const myExtra = extraChargePayers.includes(person.id) ? extraPerPerson : 0;
-
                 const finalPay = myShared + personalWithTax + takeoutPerPerson + myExtra;
                 
                 return {
@@ -322,8 +308,7 @@
             </div>
         );
 
-        // 新增：額外加點模組
-        const ExtraChargeModule = ({ amount, onAmountChange, people, selectedIds, onTogglePerson }) => {
+        const ExtraChargeModule = ({ name, onNameChange, amount, onAmountChange, people, selectedIds, onTogglePerson }) => {
             return (
                 <div className="space-y-2 pt-2 border-t border-[#E6D5C8] pb-2">
                     <div className="flex items-center gap-2 mb-1">
@@ -331,7 +316,14 @@
                          <span className="text-sm font-bold text-stone-600">額外加點</span>
                     </div>
                     
-                    <div className="relative">
+                    <div className="flex flex-col gap-2">
+                        <input
+                            type="text"
+                            value={name}
+                            onChange={onNameChange}
+                            placeholder="品項名稱 (例如: 酒水)"
+                            className="w-full px-3 py-2 bg-[#FFFCF9] border border-[#E6D5C8] rounded-lg focus:ring-2 focus:ring-[#E07A5F] outline-none text-stone-800 font-bold text-sm shadow-inner"
+                        />
                         <input
                             type="number"
                             value={amount}
@@ -491,7 +483,7 @@
             );
         };
 
-        const HiddenReceipt = ({ people, totals, serviceCharge, mode, date, discountType, discountValue }) => (
+        const HiddenReceipt = ({ people, totals, serviceCharge, mode, date, discountType, discountValue, extraChargeName }) => (
             <div id="receipt-capture" style={{ position: 'absolute', top: '-9999px', left: '-9999px', width: '400px', backgroundColor: '#FFF9F0', padding: '30px', fontFamily: 'sans-serif', color: '#4A403A' }}>
                 <div style={{ textAlign: 'center', marginBottom: '20px', borderBottom: '2px dashed #D7CCC8', paddingBottom: '20px' }}>
                     <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#E07A5F', margin: 0 }}>分帳小幫手明細</h2>
@@ -521,7 +513,7 @@
                                 <div style={{ fontWeight: 'bold', fontSize: '16px' }}>{p.name || `朋友 ${i+1}`}</div>
                                 <div style={{ fontSize: '10px', color: '#8D7F75' }}>
                                     {mode === MODES.SEPARATE ? `(個$${p.personalAmount} + 公$${Math.round(p.breakdown.shared)}` : '平均分攤'}
-                                    {p.breakdown.extra > 0 ? ` + 額$${Math.round(p.breakdown.extra)}` : ''}
+                                    {p.breakdown.extra > 0 ? ` + ${extraChargeName || '額'}+$${Math.round(p.breakdown.extra)}` : ''}
                                     {mode === MODES.SEPARATE ? ')' : ''}
                                     {p.weight !== 1 && ` • ${p.weight}份`}
                                 </div>
@@ -544,6 +536,7 @@
             const [sharedBill, setSharedBill] = useState('');
             const [takeoutBill, setTakeoutBill] = useState('');
             const [extraChargeAmount, setExtraChargeAmount] = useState('');
+            const [extraChargeName, setExtraChargeName] = useState('');
             const [extraChargePayers, setExtraChargePayers] = useState([]);
             const [serviceCharge, setServiceCharge] = useState(DEFAULT_SERVICE_CHARGE);
             const [mode, setMode] = useState(MODES.SPLIT_ALL);
@@ -622,6 +615,8 @@
                                 
                                 {/* 額外加點模組 */}
                                 <ExtraChargeModule 
+                                    name={extraChargeName}
+                                    onNameChange={(e) => setExtraChargeName(e.target.value)}
                                     amount={extraChargeAmount} 
                                     onAmountChange={(e) => setExtraChargeAmount(e.target.value)} 
                                     people={people} 
@@ -661,7 +656,7 @@
                                                     <span className="text-base font-bold text-[#E07A5F] block leading-tight">{formatCurrency(peopleResults.find(p => p.id === person.id)?.finalPay || 0)}</span>
                                                     <div className="text-[9px] text-stone-400 font-medium hidden sm:block">
                                                         {mode === MODES.SEPARATE ? `(共食+${Math.round(peopleResults.find(p => p.id === person.id)?.breakdown.shared || 0)}` : ''}
-                                                        {peopleResults.find(p => p.id === person.id)?.breakdown.extra > 0 ? (mode === MODES.SEPARATE ? ` + 額外+${Math.round(peopleResults.find(p => p.id === person.id)?.breakdown.extra)}` : `(額外+${Math.round(peopleResults.find(p => p.id === person.id)?.breakdown.extra)})`) : ''}
+                                                        {peopleResults.find(p => p.id === person.id)?.breakdown.extra > 0 ? (mode === MODES.SEPARATE ? ` + ${extraChargeName || '額'}+$${Math.round(peopleResults.find(p => p.id === person.id)?.breakdown.extra)}` : `(額外+${Math.round(peopleResults.find(p => p.id === person.id)?.breakdown.extra)})`) : ''}
                                                         {mode === MODES.SEPARATE ? ')' : ''}
                                                     </div>
                                                 </div>
@@ -700,7 +695,7 @@
                         </div>
                     </div>
 
-                    <HiddenReceipt people={peopleResults} totals={totals} serviceCharge={serviceCharge} mode={mode} date={formatDate()} discountType={discountType} discountValue={discountValue} />
+                    <HiddenReceipt people={peopleResults} totals={totals} serviceCharge={serviceCharge} mode={mode} date={formatDate()} discountType={discountType} discountValue={discountValue} extraChargeName={extraChargeName} />
                     <ReceiptModal isOpen={showReceipt} onClose={() => setShowReceipt(false)} imgSrc={receiptImg} />
                     <ShareModal isOpen={showShare} onClose={() => setShowShare(false)} />
                     <GuideModal isOpen={showGuide} onClose={() => setShowGuide(false)} />
