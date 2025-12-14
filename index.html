@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>分帳小幫手 v2.2.7</title>
+    <title>分帳小幫手 v2.3.1</title>
     
     <!-- 強制瀏覽器不快取 HTML -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -71,13 +71,13 @@
         const { useState, useMemo, useRef, useEffect } = React;
 
         /**
-         * 版本: v2.2.7
-         * 專案: 分帳小幫手 (Service Fee Display Fix)
+         * 版本: v2.3.1
+         * 專案: 分帳小幫手 (Bug Fix)
          * 修改重點:
-         * 1. 在分帳明細圖 (HiddenReceipt) 中，服務費百分比的數字與 % 之間加入空格，避免重疊。
+         * 1. 補回遺失的 useCheckUpdate Hook 定義，解決 ReferenceError。
          */
 
-        const CURRENT_VERSION = "v2.2.7";
+        const CURRENT_VERSION = "v2.3.1";
 
         // --- Assets ---
         const LOGO_URL = "https://drive.google.com/uc?export=view&id=1dhOMUAE1lZ2faIDdyd7jtJZbZf-f1C6u";
@@ -173,6 +173,9 @@
         const X = (props) => <IconBase {...props}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></IconBase>;
         const LinkIcon = (props) => <IconBase {...props}><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></IconBase>;
         const RefreshCw = (props) => <IconBase {...props}><path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path></IconBase>;
+        const Star = (props) => <IconBase {...props}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></IconBase>;
+        const CheckSquare = (props) => <IconBase {...props}><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></IconBase>;
+        const Square = (props) => <IconBase {...props}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></IconBase>;
 
         // --- Constants & Enums ---
         const MODES = { SPLIT_ALL: 'SPLIT_ALL', SEPARATE: 'SEPARATE' };
@@ -189,17 +192,32 @@
             return styles[index % styles.length];
         };
 
-        const calculateBill = (people, sharedAmount, takeoutAmount, serviceChargeRate, mode, discountType, discountValue, discountTiming) => {
+        const calculateBill = (people, sharedAmount, takeoutAmount, extraChargeAmount, extraChargePayers, serviceChargeRate, mode, discountType, discountValue, discountTiming) => {
             const count = people.length;
             const totalWeight = people.reduce((acc, p) => acc + (p.weight || 1), 0);
 
             if (totalWeight === 0) return { peopleResults: [], totals: { subtotal: 0, serviceFee: 0, grandTotal: 0 } };
 
             const taxMultiplier = 1 + (serviceChargeRate / 100);
+            
+            // 1. 額外加點計算 (Extra Charge)
+            // 視為內用加點，需加服務費
+            const extraChargeWithTax = extraChargeAmount * taxMultiplier;
+            const extraChargeFee = extraChargeAmount * (serviceChargeRate / 100);
+            
+            // 找出被選中的人
+            const selectedPayersCount = extraChargePayers.length;
+            const extraPerPerson = selectedPayersCount > 0 ? extraChargeWithTax / selectedPayersCount : 0;
+
+            // 2. 主帳單折扣計算
             let sharedWithTax = 0;
             let discountAmount = 0;
             let totalServiceFee = 0;
 
+            // 總服務費初始值 = 主餐服務費 + 額外加點服務費
+            // 注意：折扣通常只針對「主餐+個人」的部分，額外加點通常是獨立計算的，這裡假設折扣不影響額外加點
+            // 若要讓折扣也影響額外加點，邏輯會更複雜。為求直觀，這裡將額外加點視為獨立項目疊加。
+            
             if (discountType === DISCOUNT_TYPES.AMOUNT) {
                 const amount = discountValue || 0;
                 discountAmount = amount;
@@ -245,21 +263,30 @@
 
                 totalIndividualBase += personalBase;
                 const myShared = sharedPerWeightUnit * weight;
-                const finalPay = myShared + personalWithTax + takeoutPerPerson;
+                
+                // 檢查是否需分攤額外費用
+                const myExtra = extraChargePayers.includes(person.id) ? extraPerPerson : 0;
+
+                const finalPay = myShared + personalWithTax + takeoutPerPerson + myExtra;
                 
                 return {
                     ...person,
-                    breakdown: { shared: myShared, personal: personalWithTax, takeout: takeoutPerPerson },
+                    breakdown: { shared: myShared, personal: personalWithTax, takeout: takeoutPerPerson, extra: myExtra },
                     finalPay: Math.round(finalPay) 
                 };
             });
 
             const grandTotal = peopleResults.reduce((acc, p) => acc + p.finalPay, 0);
-            const finalServiceFee = totalServiceFee + totalIndividualTax;
+            const finalServiceFee = totalServiceFee + totalIndividualTax + extraChargeFee;
 
             return {
                 peopleResults,
-                totals: { subtotal: sharedAmount + totalIndividualBase + takeoutAmount, serviceFee: finalServiceFee, grandTotal: grandTotal, discount: discountAmount }
+                totals: { 
+                    subtotal: sharedAmount + totalIndividualBase + takeoutAmount + extraChargeAmount, 
+                    serviceFee: finalServiceFee, 
+                    grandTotal: grandTotal, 
+                    discount: discountAmount 
+                }
             };
         };
 
@@ -294,6 +321,54 @@
                 {selected ? <CheckCircle size={14} /> : <Circle size={14} />}<span className="text-xs">{label}</span>
             </div>
         );
+
+        // 新增：額外加點模組
+        const ExtraChargeModule = ({ amount, onAmountChange, people, selectedIds, onTogglePerson }) => {
+            return (
+                <div className="space-y-2 pt-2 border-t border-[#E6D5C8] pb-2">
+                    <div className="flex items-center gap-2 mb-1">
+                         <Star size={16} className="text-[#E07A5F]" />
+                         <span className="text-sm font-bold text-stone-600">額外加點</span>
+                    </div>
+                    
+                    <div className="relative">
+                        <input
+                            type="number"
+                            value={amount}
+                            onChange={onAmountChange}
+                            placeholder="輸入金額"
+                            className="w-full px-3 py-2 bg-[#FFFCF9] border border-[#E6D5C8] rounded-lg focus:ring-2 focus:ring-[#E07A5F] outline-none text-stone-800 font-bold text-sm shadow-inner"
+                        />
+                    </div>
+                    <p className="text-[10px] text-stone-400 leading-tight">
+                        適用在某些人額外負擔某些品項，例如：個人加點(或外帶)、某幾位分攤酒錢...等等. 請在下方勾選分攤人員
+                    </p>
+
+                    <div className="bg-[#FFF9F0] p-2 rounded-lg border border-[#E6D5C8] max-h-32 overflow-y-auto custom-scrollbar">
+                        <div className="flex flex-wrap gap-2">
+                            {people.map(p => {
+                                const isSelected = selectedIds.includes(p.id);
+                                return (
+                                    <button
+                                        key={p.id}
+                                        onClick={() => onTogglePerson(p.id)}
+                                        className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold border transition-all ${
+                                            isSelected 
+                                            ? 'bg-[#E07A5F] text-white border-[#E07A5F]' 
+                                            : 'bg-white text-stone-400 border-stone-200 hover:border-stone-300'
+                                        }`}
+                                    >
+                                        {isSelected ? <CheckSquare size={12}/> : <Square size={12}/>}
+                                        {p.name || `朋友 ${p.id}`}
+                                    </button>
+                                );
+                            })}
+                            {people.length === 0 && <span className="text-[10px] text-stone-400">請先新增名單</span>}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
 
         const DiscountSelector = ({ type, onChangeType, value, onChangeValue, timing, onChangeTiming }) => {
             const discountLabel = useMemo(() => {
@@ -442,7 +517,15 @@
                     <h3 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '10px', color: '#8D7F75' }}>分攤名單 ({people.length}人)</h3>
                     {people.map((p, i) => (
                         <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid #EFE6E0' }}>
-                            <div><div style={{ fontWeight: 'bold', fontSize: '16px' }}>{p.name || `朋友 ${i+1}`}</div><div style={{ fontSize: '10px', color: '#8D7F75' }}>{mode === MODES.SEPARATE ? `(個$${p.personalAmount} + 公$${Math.round(p.breakdown.shared)})` : '平均分攤'}{p.weight !== 1 && ` • ${p.weight}份`}</div></div>
+                            <div>
+                                <div style={{ fontWeight: 'bold', fontSize: '16px' }}>{p.name || `朋友 ${i+1}`}</div>
+                                <div style={{ fontSize: '10px', color: '#8D7F75' }}>
+                                    {mode === MODES.SEPARATE ? `(個$${p.personalAmount} + 公$${Math.round(p.breakdown.shared)}` : '平均分攤'}
+                                    {p.breakdown.extra > 0 ? ` + 額$${Math.round(p.breakdown.extra)}` : ''}
+                                    {mode === MODES.SEPARATE ? ')' : ''}
+                                    {p.weight !== 1 && ` • ${p.weight}份`}
+                                </div>
+                            </div>
                             <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#4A403A' }}>{formatCurrency(p.finalPay)}</div>
                         </div>
                     ))}
@@ -460,6 +543,8 @@
             const [people, setPeople] = useState([{ id: 1, name: '', personalAmount: 0, weight: 1 }, { id: 2, name: '', personalAmount: 0, weight: 1 }]);
             const [sharedBill, setSharedBill] = useState('');
             const [takeoutBill, setTakeoutBill] = useState('');
+            const [extraChargeAmount, setExtraChargeAmount] = useState('');
+            const [extraChargePayers, setExtraChargePayers] = useState([]);
             const [serviceCharge, setServiceCharge] = useState(DEFAULT_SERVICE_CHARGE);
             const [mode, setMode] = useState(MODES.SPLIT_ALL);
             const [discountType, setDiscountType] = useState(DISCOUNT_TYPES.NONE);
@@ -476,10 +561,19 @@
             const [showGuide, setShowGuide] = useState(false);
 
             const handleDiscountTypeChange = (newType) => { setDiscountType(newType); setDiscountValue(''); };
-            const { peopleResults, totals } = useMemo(() => calculateBill(people, Number(sharedBill) || 0, Number(takeoutBill) || 0, Number(serviceCharge) || 0, mode, discountType, Number(discountValue), discountTiming), [people, sharedBill, takeoutBill, serviceCharge, mode, discountType, discountValue, discountTiming]);
+            
+            // Toggle Extra Charge Payer
+            const toggleExtraPayer = (id) => {
+                setExtraChargePayers(prev => prev.includes(id) ? prev.filter(pid => pid !== id) : [...prev, id]);
+            };
+
+            const { peopleResults, totals } = useMemo(() => calculateBill(people, Number(sharedBill) || 0, Number(takeoutBill) || 0, Number(extraChargeAmount) || 0, extraChargePayers, Number(serviceCharge) || 0, mode, discountType, Number(discountValue), discountTiming), [people, sharedBill, takeoutBill, extraChargeAmount, extraChargePayers, serviceCharge, mode, discountType, discountValue, discountTiming]);
 
             const addPerson = () => { const newId = people.length > 0 ? Math.max(...people.map(p => p.id)) + 1 : 1; setPeople([...people, { id: newId, name: '', personalAmount: 0, weight: 1 }]); };
-            const removePerson = (id) => setPeople(people.filter(p => p.id !== id));
+            const removePerson = (id) => {
+                setPeople(people.filter(p => p.id !== id));
+                setExtraChargePayers(prev => prev.filter(pid => pid !== id)); // Remove from extra payers if deleted
+            };
             const updatePerson = (id, field, value) => setPeople(people.map(p => p.id === id ? { ...p, [field]: value } : p));
             const toggleWeight = (id) => setPeople(people.map(p => p.id === id ? { ...p, weight: p.weight === 1 ? 0.5 : 1 } : p));
             const toggleMode = () => setMode(prev => prev === MODES.SPLIT_ALL ? MODES.SEPARATE : MODES.SPLIT_ALL);
@@ -518,13 +612,23 @@
                                 <div className="flex items-center gap-2 mb-3 text-[#E07A5F] font-bold text-base"><Settings size={18} /><h3>計算設定</h3></div>
                                 <div className="space-y-3">
                                     <div><label className="block text-xs font-bold text-stone-600 mb-1">分帳模式</label><ToggleSwitch active={mode === MODES.SPLIT_ALL ? 'left' : 'right'} onClick={toggleMode} leftLabel="全部平分" rightLabel="扣除各別單點" /></div>
-                                    <div className="grid grid-cols-2 gap-3"><InputGroup label="服務費率" icon={Receipt} value={serviceCharge} onChange={(e) => setServiceCharge(e.target.value)} subLabel="%" /><InputGroup label="外帶(免服務費)" icon={Coffee} value={takeoutBill} onChange={(e) => setTakeoutBill(e.target.value)} placeholder="0" /></div>
+                                    <div className="grid grid-cols-2 gap-3"><InputGroup label="服務費率" icon={Receipt} value={serviceCharge} onChange={(e) => setServiceCharge(e.target.value)} subLabel="%" /><InputGroup label="共同外帶(免服務費)" icon={Coffee} value={takeoutBill} onChange={(e) => setTakeoutBill(e.target.value)} placeholder="0" /></div>
                                 </div>
                             </Card>
                             <Card className="border-l-4 border-l-[#E07A5F]">
                                 <div className="flex items-center gap-2 mb-3 text-[#E07A5F] font-bold text-base"><DollarSign size={18} /><h3>{mode === MODES.SPLIT_ALL ? '總金額 (未稅)' : '共同分食 (未稅)'}</h3></div>
                                 <InputGroup label={mode === MODES.SPLIT_ALL ? "帳單總金額" : "大家一起吃的金額"} value={sharedBill} onChange={(e) => setSharedBill(e.target.value)} placeholder="輸入金額" className="text-lg font-bold text-[#E07A5F]" />
                                 <p className="mt-2 mb-4 text-[10px] text-stone-500 font-medium bg-[#FFF9F0] p-2 rounded border border-[#E6D5C8] leading-tight">{mode === MODES.SPLIT_ALL ? "含服務費後平均分配。" : "加收服務費後分配。個人部分請在右側輸入。"}</p>
+                                
+                                {/* 額外加點模組 */}
+                                <ExtraChargeModule 
+                                    amount={extraChargeAmount} 
+                                    onAmountChange={(e) => setExtraChargeAmount(e.target.value)} 
+                                    people={people} 
+                                    selectedIds={extraChargePayers} 
+                                    onTogglePerson={toggleExtraPayer} 
+                                />
+
                                 <DiscountSelector type={discountType} onChangeType={handleDiscountTypeChange} value={discountValue} onChangeValue={(e) => setDiscountValue(e.target.value)} timing={discountTiming} onChangeTiming={setDiscountTiming} />
                             </Card>
                             <Card className="!bg-[#3D405B] text-white border-none shadow-xl shadow-stone-300 hidden lg:block">
@@ -551,7 +655,17 @@
                                                 </div>
                                             </div>
                                             {mode === MODES.SEPARATE && <div className="w-full sm:w-28 pl-8 sm:pl-0"><div className="relative"><span className="absolute left-2 top-1/2 -translate-y-1/2 text-stone-400 text-[10px] font-bold">$</span><input type="number" placeholder="個人" value={person.personalAmount || ''} onChange={(e) => updatePerson(person.id, 'personalAmount', e.target.value)} className="w-full pl-5 pr-2 py-1.5 text-sm bg-[#FFFCF9] border border-[#E6D5C8] rounded-md focus:ring-2 focus:ring-[#E07A5F] outline-none text-right font-medium text-stone-700" /></div></div>}
-                                            <div className="w-full sm:w-auto sm:min-w-[100px] text-right flex justify-between sm:block items-center pl-8 sm:pl-0"><span className="text-xs text-stone-500 font-bold sm:hidden">應付</span><div><span className="text-base font-bold text-[#E07A5F] block leading-tight">{formatCurrency(peopleResults.find(p => p.id === person.id)?.finalPay || 0)}</span>{mode === MODES.SEPARATE && <div className="text-[9px] text-stone-400 font-medium hidden sm:block">(共食+{Math.round(peopleResults.find(p => p.id === person.id)?.breakdown.shared || 0)})</div>}</div></div>
+                                            <div className="w-full sm:w-auto sm:min-w-[100px] text-right flex justify-between sm:block items-center pl-8 sm:pl-0">
+                                                <span className="text-xs text-stone-500 font-bold sm:hidden">應付</span>
+                                                <div>
+                                                    <span className="text-base font-bold text-[#E07A5F] block leading-tight">{formatCurrency(peopleResults.find(p => p.id === person.id)?.finalPay || 0)}</span>
+                                                    <div className="text-[9px] text-stone-400 font-medium hidden sm:block">
+                                                        {mode === MODES.SEPARATE ? `(共食+${Math.round(peopleResults.find(p => p.id === person.id)?.breakdown.shared || 0)}` : ''}
+                                                        {peopleResults.find(p => p.id === person.id)?.breakdown.extra > 0 ? (mode === MODES.SEPARATE ? ` + 額外+${Math.round(peopleResults.find(p => p.id === person.id)?.breakdown.extra)}` : `(額外+${Math.round(peopleResults.find(p => p.id === person.id)?.breakdown.extra)})`) : ''}
+                                                        {mode === MODES.SEPARATE ? ')' : ''}
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     ))}
                                     {people.length === 0 && <div className="text-center py-8 text-stone-400"><User size={32} className="mx-auto mb-2 opacity-20" /><p className="text-xs">點擊「增加」開始分帳</p></div>}
