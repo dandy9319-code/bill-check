@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>分帳小幫手 v2.3.3</title>
+    <title>分帳小幫手 v2.3.4</title>
     
     <!-- 強制瀏覽器不快取 HTML -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -71,14 +71,14 @@
         const { useState, useMemo, useRef, useEffect } = React;
 
         /**
-         * 版本: v2.3.3
-         * 專案: 分帳小幫手 (Discount Logic Fix)
+         * 版本: v2.3.4
+         * 專案: 分帳小幫手 (Individual Discount Display)
          * 修改重點:
-         * 1. 修正折扣計算邏輯：現在會將「共同金額」與「個人單點總和」合併計算折扣，解決共同金額為 0 時折扣無效的問題。
-         * 2. 優化額外加點總結：若無人分攤額外加點，則不計入總結，避免帳目誤差。
+         * 1. calculateBill: 計算每個人的折扣金額 (myDiscount) 並加入 breakdown。
+         * 2. HiddenReceipt: 在分攤名單中顯示每個人的折扣金額。
          */
 
-        const CURRENT_VERSION = "v2.3.3";
+        const CURRENT_VERSION = "v2.3.4";
 
         // --- Assets ---
         const LOGO_URL = "https://drive.google.com/uc?export=view&id=1dhOMUAE1lZ2faIDdyd7jtJZbZf-f1C6u";
@@ -162,7 +162,7 @@
         const Share2 = (props) => <IconBase {...props}><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></IconBase>;
         const Download = (props) => <IconBase {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></IconBase>;
         const Tag = (props) => <IconBase {...props}><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></IconBase>;
-        const Settings = (props) => <IconBase {...props}><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></IconBase>;
+        const Settings = (props) => <IconBase {...props}><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></IconBase>;
         const CheckCircle = (props) => <IconBase {...props}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></IconBase>;
         const Circle = (props) => <IconBase {...props}><circle cx="12" cy="12" r="10"></circle></IconBase>;
         const Camera = (props) => <IconBase {...props}><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></IconBase>;
@@ -283,6 +283,9 @@
                     myAdjustedPersonal = myPersonalRaw * ratio;
                 }
 
+                // 計算每個人分配到的折扣金額 (原始應付 - 實際應付)
+                const myDiscount = myTotalRaw - myFinalMain;
+
                 // 額外加點
                 const myExtra = extraChargePayers.includes(person.id) ? extraPerPerson : 0;
                 
@@ -294,7 +297,8 @@
                         shared: myAdjustedShared,
                         personal: myAdjustedPersonal,
                         takeout: takeoutPerPerson,
-                        extra: myExtra
+                        extra: myExtra,
+                        discount: myDiscount // 新增折扣金額到 breakdown
                     },
                     finalPay: Math.round(finalPay)
                 };
@@ -558,6 +562,8 @@
                                 <div style={{ fontSize: '10px', color: '#8D7F75' }}>
                                     {mode === MODES.SEPARATE ? `(個$${p.personalAmount} + 公$${Math.round(p.breakdown.shared)}` : '平均分攤'}
                                     {p.breakdown.extra > 0 ? ` + ${extraChargeName || '額'}+$${Math.round(p.breakdown.extra)}` : ''}
+                                    {/* 顯示個人分到的折扣金額 */}
+                                    {p.breakdown.discount > 0 ? ` - 折$${Math.round(p.breakdown.discount)}` : ''}
                                     {mode === MODES.SEPARATE ? ')' : ''}
                                     {p.weight !== 1 && ` • ${p.weight}份`}
                                 </div>
