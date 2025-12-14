@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>分帳小幫手 v2.3.2</title>
+    <title>分帳小幫手 v2.3.3</title>
     
     <!-- 強制瀏覽器不快取 HTML -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -71,14 +71,14 @@
         const { useState, useMemo, useRef, useEffect } = React;
 
         /**
-         * 版本: v2.3.2
-         * 專案: 分帳小幫手 (Extra Charge Name)
+         * 版本: v2.3.3
+         * 專案: 分帳小幫手 (Discount Logic Fix)
          * 修改重點:
-         * 1. ExtraChargeModule 新增「品項名稱」輸入欄位。
-         * 2. HiddenReceipt 支援顯示自訂的額外加點名稱 (取代預設的"額")。
+         * 1. 修正折扣計算邏輯：現在會將「共同金額」與「個人單點總和」合併計算折扣，解決共同金額為 0 時折扣無效的問題。
+         * 2. 優化額外加點總結：若無人分攤額外加點，則不計入總結，避免帳目誤差。
          */
 
-        const CURRENT_VERSION = "v2.3.2";
+        const CURRENT_VERSION = "v2.3.3";
 
         // --- Assets ---
         const LOGO_URL = "https://drive.google.com/uc?export=view&id=1dhOMUAE1lZ2faIDdyd7jtJZbZf-f1C6u";
@@ -162,7 +162,7 @@
         const Share2 = (props) => <IconBase {...props}><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></IconBase>;
         const Download = (props) => <IconBase {...props}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></IconBase>;
         const Tag = (props) => <IconBase {...props}><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></IconBase>;
-        const Settings = (props) => <IconBase {...props}><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></IconBase>;
+        const Settings = (props) => <IconBase {...props}><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></IconBase>;
         const CheckCircle = (props) => <IconBase {...props}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></IconBase>;
         const Circle = (props) => <IconBase {...props}><circle cx="12" cy="12" r="10"></circle></IconBase>;
         const Camera = (props) => <IconBase {...props}><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></IconBase>;
@@ -195,83 +195,127 @@
             if (totalWeight === 0) return { peopleResults: [], totals: { subtotal: 0, serviceFee: 0, grandTotal: 0 } };
 
             const taxMultiplier = 1 + (serviceChargeRate / 100);
-            
-            // 1. 額外加點計算 (Extra Charge)
-            const extraChargeWithTax = extraChargeAmount * taxMultiplier;
-            const extraChargeFee = extraChargeAmount * (serviceChargeRate / 100);
-            const selectedPayersCount = extraChargePayers.length;
-            const extraPerPerson = selectedPayersCount > 0 ? extraChargeWithTax / selectedPayersCount : 0;
 
-            // 2. 主帳單折扣計算
-            let sharedWithTax = 0;
+            // 1. 計算所有人的個人單點總額 (需先算出才能正確計算全單折扣)
+            let totalIndividualBase = 0;
+            if (mode === MODES.SEPARATE) {
+                totalIndividualBase = people.reduce((sum, p) => sum + (parseFloat(p.personalAmount) || 0), 0);
+            }
+
+            // 2. 主帳單折扣計算 (範圍：共同金額 + 個人單點總和)
+            // 這是整桌的「可打折基礎金額」
+            const mainTaxableBase = sharedAmount + totalIndividualBase;
+            
+            let mainBillWithTax = 0; // 含稅後、折扣前
+            let mainBillFinal = 0;   // 含稅後、折扣後 (要分配給大家的總額)
             let discountAmount = 0;
-            let totalServiceFee = 0;
+            let mainServiceFee = 0;
+
+            const rawServiceFee = mainTaxableBase * (serviceChargeRate / 100);
+            const rawTotalWithTax = mainTaxableBase * taxMultiplier;
 
             if (discountType === DISCOUNT_TYPES.AMOUNT) {
                 const amount = discountValue || 0;
-                discountAmount = amount;
                 if (discountTiming === DISCOUNT_TIMING.BEFORE_TAX) {
-                    const taxableAmount = Math.max(0, sharedAmount - amount);
-                    sharedWithTax = taxableAmount * taxMultiplier;
-                    totalServiceFee = taxableAmount * (serviceChargeRate / 100);
+                    // 服務費前扣抵: (總金額 - 折扣) * 1.1
+                    const adjustedBase = Math.max(0, mainTaxableBase - amount);
+                    mainServiceFee = adjustedBase * (serviceChargeRate / 100);
+                    mainBillFinal = adjustedBase * taxMultiplier;
+                    // 實際省下的錢 = 原本總額 - 折扣後總額
+                    discountAmount = rawTotalWithTax - mainBillFinal;
                 } else {
-                    const baseTaxed = sharedAmount * taxMultiplier;
-                    sharedWithTax = Math.max(0, baseTaxed - amount);
-                    totalServiceFee = sharedAmount * (serviceChargeRate / 100);
+                    // 服務費後扣抵: (總金額 * 1.1) - 折扣
+                    mainServiceFee = rawServiceFee;
+                    mainBillFinal = Math.max(0, rawTotalWithTax - amount);
+                    discountAmount = rawTotalWithTax - mainBillFinal;
                 }
             } else if (discountType === DISCOUNT_TYPES.PERCENT) {
                 const percentOff = discountValue || 0;
                 const validPercentOff = Math.min(100, Math.max(0, percentOff));
-                const percentToPay = 100 - validPercentOff;
-                const baseTaxed = sharedAmount * taxMultiplier;
-                const afterDiscount = baseTaxed * (percentToPay / 100);
-                sharedWithTax = afterDiscount;
-                discountAmount = baseTaxed - afterDiscount; 
-                totalServiceFee = sharedAmount * (serviceChargeRate / 100); 
+                const percentMultiplier = (100 - validPercentOff) / 100;
+                
+                // 打折 (%) 通常是對「含稅總額」打折，或是「餐費打折+原價服務費」
+                // 依據需求：服務費依原價計算。公式：(總金額 + 10%服務費) - 折扣
+                mainServiceFee = rawServiceFee;
+                mainBillFinal = rawTotalWithTax * percentMultiplier;
+                discountAmount = rawTotalWithTax - mainBillFinal;
             } else {
-                sharedWithTax = sharedAmount * taxMultiplier;
-                totalServiceFee = sharedAmount * (serviceChargeRate / 100);
+                mainServiceFee = rawServiceFee;
+                mainBillFinal = rawTotalWithTax;
+                discountAmount = 0;
             }
 
-            const sharedPerWeightUnit = sharedWithTax / totalWeight;
+            // 3. 額外加點計算 (獨立計算，不參與主帳單折扣)
+            // 只有當有人分攤時，才計算這筆錢
+            const extraPayersCount = extraChargePayers.length;
+            const hasExtraPayers = extraPayersCount > 0;
+            
+            const extraChargeWithTax = hasExtraPayers ? extraChargeAmount * taxMultiplier : 0;
+            const extraChargeFee = hasExtraPayers ? extraChargeAmount * (serviceChargeRate / 100) : 0;
+            const extraPerPerson = hasExtraPayers ? extraChargeWithTax / extraPayersCount : 0;
+
+            // 4. 分配金額 (Distribute)
             const takeoutPerPerson = takeoutAmount / count;
 
-            let totalIndividualBase = 0;
-            let totalIndividualTax = 0;
-
             const peopleResults = people.map(person => {
-                let personalBase = 0;
-                let personalWithTax = 0;
                 const weight = person.weight || 1;
+                const personalBase = (mode === MODES.SEPARATE) ? (parseFloat(person.personalAmount) || 0) : 0;
+                
+                // 計算「原始應付金額 (未折扣)」
+                // 該員的共同分食佔比 = (共同金額 / 總權重 * 個人權重)
+                const mySharedRaw = (sharedAmount / totalWeight * weight) * taxMultiplier;
+                // 該員的個人單點 (含稅)
+                const myPersonalRaw = personalBase * taxMultiplier;
+                
+                const myTotalRaw = mySharedRaw + myPersonalRaw;
 
-                if (mode === MODES.SEPARATE) {
-                    personalBase = parseFloat(person.personalAmount) || 0;
-                    personalWithTax = personalBase * taxMultiplier;
-                    totalIndividualTax += (personalBase * (serviceChargeRate / 100));
+                // 依比例分配折扣後的總金額
+                // 邏輯：該員應付 = 折扣後總額 * (該員原始應付 / 原始總額)
+                let myFinalMain = 0;
+                let myAdjustedShared = mySharedRaw;
+                let myAdjustedPersonal = myPersonalRaw;
+
+                if (rawTotalWithTax > 0) {
+                    const ratio = mainBillFinal / rawTotalWithTax;
+                    myFinalMain = myTotalRaw * ratio;
+                    // 用同樣比例調整細項顯示 (僅供參考用)
+                    myAdjustedShared = mySharedRaw * ratio;
+                    myAdjustedPersonal = myPersonalRaw * ratio;
                 }
 
-                totalIndividualBase += personalBase;
-                const myShared = sharedPerWeightUnit * weight;
+                // 額外加點
                 const myExtra = extraChargePayers.includes(person.id) ? extraPerPerson : 0;
-                const finalPay = myShared + personalWithTax + takeoutPerPerson + myExtra;
                 
+                const finalPay = myFinalMain + myExtra + takeoutPerPerson;
+
                 return {
                     ...person,
-                    breakdown: { shared: myShared, personal: personalWithTax, takeout: takeoutPerPerson, extra: myExtra },
-                    finalPay: Math.round(finalPay) 
+                    breakdown: {
+                        shared: myAdjustedShared,
+                        personal: myAdjustedPersonal,
+                        takeout: takeoutPerPerson,
+                        extra: myExtra
+                    },
+                    finalPay: Math.round(finalPay)
                 };
             });
 
+            // 5. 總結計算
+            // 為了讓總結數字與每個人加總一致，這裡使用 peopleResults 的加總
             const grandTotal = peopleResults.reduce((acc, p) => acc + p.finalPay, 0);
-            const finalServiceFee = totalServiceFee + totalIndividualTax + extraChargeFee;
+            
+            // 顯示用的統計數據 (僅當有選人分攤時，才把額外加點算進 Subtotal)
+            const validExtraCharge = hasExtraPayers ? parseFloat(extraChargeAmount) : 0;
+            const totalSubtotal = sharedAmount + totalIndividualBase + takeoutAmount + validExtraCharge;
+            const totalServiceFee = mainServiceFee + extraChargeFee;
 
             return {
                 peopleResults,
-                totals: { 
-                    subtotal: sharedAmount + totalIndividualBase + takeoutAmount + extraChargeAmount, 
-                    serviceFee: finalServiceFee, 
-                    grandTotal: grandTotal, 
-                    discount: discountAmount 
+                totals: {
+                    subtotal: totalSubtotal,
+                    serviceFee: totalServiceFee,
+                    grandTotal: grandTotal,
+                    discount: discountAmount
                 }
             };
         };
