@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>分帳小幫手 v2.3.4</title>
+    <title>分帳小幫手 v2.3.5</title>
     
     <!-- 強制瀏覽器不快取 HTML -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -71,14 +71,15 @@
         const { useState, useMemo, useRef, useEffect } = React;
 
         /**
-         * 版本: v2.3.4
-         * 專案: 分帳小幫手 (Individual Discount Display)
+         * 版本: v2.3.5
+         * 專案: 分帳小幫手 (Layout Optimization)
          * 修改重點:
-         * 1. calculateBill: 計算每個人的折扣金額 (myDiscount) 並加入 breakdown。
-         * 2. HiddenReceipt: 在分攤名單中顯示每個人的折扣金額。
+         * 1. 優化「服務費率」與「共同外帶」的欄位佈局。
+         * 2. 改用 Flex 佈局：服務費率固定寬度 (w-28)，共同外帶自動填滿剩餘空間 (flex-1)。
+         * 3. InputGroup 標籤加入 whitespace-nowrap 防止文字換行。
          */
 
-        const CURRENT_VERSION = "v2.3.4";
+        const CURRENT_VERSION = "v2.3.5";
 
         // --- Assets ---
         const LOGO_URL = "https://drive.google.com/uc?export=view&id=1dhOMUAE1lZ2faIDdyd7jtJZbZf-f1C6u";
@@ -335,7 +336,7 @@
         const InputGroup = ({ label, icon: Icon, value, onChange, placeholder, type = "number", subLabel, className = "" }) => (
             <div className="flex flex-col space-y-1">
                 <label className="text-sm font-bold text-stone-600 flex justify-between items-center">
-                    <span className="flex items-center gap-1.5">{Icon && <Icon size={14} className="text-[#E07A5F]" />}{label}</span>
+                    <span className="flex items-center gap-1.5 whitespace-nowrap">{Icon && <Icon size={14} className="text-[#E07A5F]" />}{label}</span>
                     {subLabel && <span className="text-[10px] text-stone-400 font-medium">{subLabel}</span>}
                 </label>
                 <input type={type} value={value} onChange={onChange} placeholder={placeholder} onFocus={(e) => e.target.select()} className={`w-full px-3 py-2 bg-[#FFFCF9] border border-[#E6D5C8] rounded-lg focus:ring-2 focus:ring-[#E07A5F] focus:border-[#E07A5F] outline-none transition-all text-stone-800 font-bold placeholder-stone-300 shadow-inner text-sm ${className}`} />
@@ -655,7 +656,14 @@
                                 <div className="flex items-center gap-2 mb-3 text-[#E07A5F] font-bold text-base"><Settings size={18} /><h3>計算設定</h3></div>
                                 <div className="space-y-3">
                                     <div><label className="block text-xs font-bold text-stone-600 mb-1">分帳模式</label><ToggleSwitch active={mode === MODES.SPLIT_ALL ? 'left' : 'right'} onClick={toggleMode} leftLabel="全部平分" rightLabel="扣除各別單點" /></div>
-                                    <div className="grid grid-cols-2 gap-3"><InputGroup label="服務費率" icon={Receipt} value={serviceCharge} onChange={(e) => setServiceCharge(e.target.value)} subLabel="%" /><InputGroup label="共同外帶(免服務費)" icon={Coffee} value={takeoutBill} onChange={(e) => setTakeoutBill(e.target.value)} placeholder="0" /></div>
+                                    <div className="flex gap-3">
+                                        <div className="w-28 shrink-0">
+                                            <InputGroup label="服務費率" icon={Receipt} value={serviceCharge} onChange={(e) => setServiceCharge(e.target.value)} subLabel="%" />
+                                        </div>
+                                        <div className="flex-1">
+                                            <InputGroup label="共同外帶(免服務費)" icon={Coffee} value={takeoutBill} onChange={(e) => setTakeoutBill(e.target.value)} placeholder="0" />
+                                        </div>
+                                    </div>
                                 </div>
                             </Card>
                             <Card className="border-l-4 border-l-[#E07A5F]">
