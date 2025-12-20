@@ -3,12 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>分帳小幫手 v2.3.5</title>
+    <title>分帳小幫手 v2.3.6</title>
     
     <!-- 強制瀏覽器不快取 HTML -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
+
+    <!-- 預先連線加速 CDN -->
+    <link rel="preconnect" href="https://unpkg.com">
+    <link rel="preconnect" href="https://cdn.tailwindcss.com">
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
 
     <!-- PWA 設定 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -28,8 +33,7 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- 引入 html2canvas -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- 移除了一開始就載入 html2canvas，改為按需載入以加速啟動 -->
 
     <style>
         html, body { overflow-x: hidden; width: 100%; }
@@ -71,15 +75,15 @@
         const { useState, useMemo, useRef, useEffect } = React;
 
         /**
-         * 版本: v2.3.5
-         * 專案: 分帳小幫手 (Layout Optimization)
+         * 版本: v2.3.6
+         * 專案: 分帳小幫手 (Performance Optimization)
          * 修改重點:
-         * 1. 優化「服務費率」與「共同外帶」的欄位佈局。
-         * 2. 改用 Flex 佈局：服務費率固定寬度 (w-28)，共同外帶自動填滿剩餘空間 (flex-1)。
-         * 3. InputGroup 標籤加入 whitespace-nowrap 防止文字換行。
+         * 1. 效能優化：移除 index.html 初始載入的 html2canvas 腳本。
+         * 2. 改為「按需載入 (Lazy Load)」：只有在使用者點擊「生成圖片」按鈕時，才動態下載 html2canvas。
+         * 3. 這可以減少初始下載量，稍微提升網頁開啟速度。
          */
 
-        const CURRENT_VERSION = "v2.3.5";
+        const CURRENT_VERSION = "v2.3.6";
 
         // --- Assets ---
         const LOGO_URL = "https://drive.google.com/uc?export=view&id=1dhOMUAE1lZ2faIDdyd7jtJZbZf-f1C6u";
@@ -148,6 +152,21 @@
                 console.error("Download/Share failed:", error);
                 alert("無法自動開啟分享選單。請直接長按圖片進行儲存。");
             }
+        };
+
+        // --- Helper: Lazy Load Script ---
+        const loadScript = (src) => {
+            return new Promise((resolve, reject) => {
+                if (document.querySelector(`script[src="${src}"]`)) {
+                    resolve();
+                    return;
+                }
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
         };
 
         // --- Icon Components ---
@@ -626,9 +645,22 @@
                 const element = document.getElementById('receipt-capture');
                 if (!element) return;
                 try {
-                    const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: '#FFF9F0' });
-                    setReceiptImg(canvas.toDataURL('image/png'));
-                    setShowReceipt(true);
+                    // Check if html2canvas is loaded
+                    if (typeof html2canvas === 'undefined') {
+                        // Load script if not present
+                        const script = document.createElement('script');
+                        script.src = "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js";
+                        script.onload = async () => {
+                            const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: '#FFF9F0' });
+                            setReceiptImg(canvas.toDataURL('image/png'));
+                            setShowReceipt(true);
+                        };
+                        document.head.appendChild(script);
+                    } else {
+                        const canvas = await html2canvas(element, { scale: 2, useCORS: true, backgroundColor: '#FFF9F0' });
+                        setReceiptImg(canvas.toDataURL('image/png'));
+                        setShowReceipt(true);
+                    }
                 } catch (error) { console.error('Screenshot failed:', error); alert('生成圖片失敗，請重試'); }
             };
 
@@ -715,6 +747,8 @@
                                                     <div className="text-[9px] text-stone-400 font-medium hidden sm:block">
                                                         {mode === MODES.SEPARATE ? `(共食+${Math.round(peopleResults.find(p => p.id === person.id)?.breakdown.shared || 0)}` : ''}
                                                         {peopleResults.find(p => p.id === person.id)?.breakdown.extra > 0 ? (mode === MODES.SEPARATE ? ` + ${extraChargeName || '額'}+$${Math.round(peopleResults.find(p => p.id === person.id)?.breakdown.extra)}` : `(額外+${Math.round(peopleResults.find(p => p.id === person.id)?.breakdown.extra)})`) : ''}
+                                                        {/* 顯示個人分到的折扣金額 */}
+                                                        {peopleResults.find(p => p.id === person.id)?.breakdown.discount > 0 ? ` - 折$${Math.round(peopleResults.find(p => p.id === person.id)?.breakdown.discount)}` : ''}
                                                         {mode === MODES.SEPARATE ? ')' : ''}
                                                     </div>
                                                 </div>
